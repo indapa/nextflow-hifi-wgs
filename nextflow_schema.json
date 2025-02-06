@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com//master/nextflow_schema.json",
+  "title": " pipeline parameters",
+  "description": "",
+  "type": "object",
+  "properties": {
+    "samplesheet": {
+      "type": "string",
+      "default": "/workspaces/nextflow-wave-indapa/Samplesheets/samplesheet.csv"
+    },
+    "reference": {
+      "type": "string",
+      "default": "/workspaces/nextflow-wave-indapa/resources/human_GRCh38_no_alt_analysis_set.fasta",
+      "description": "reference assembly"
+    },
+    "reference_index": {
+      "type": "string",
+      "default": "/workspaces/nextflow-wave-indapa/resources/human_GRCh38_no_alt_analysis_set.fasta.fai",
+      "description": "reference assembly index (.fai)"
+    },
+    "aligned_output_dir": {
+      "type": "string",
+      "default": "s3://xella-sequencing-test-data",
+      "description": "read alignment output"
+    },
+    "cpg_output_dir": {
+      "type": "string",
+      "default": "s3://xella-sequencing-test-data",
+      "description": "CpG-tools methylation results"
+    },
+    "cpgmodel": {
+      "type": "string",
+      "default": "/workspaces/nextflow-wave-indapa/resources/pileup_calling_model.v1.tflite",
+      "description": "pb-CpG-tools model"
+    },
+    "cpu": {
+      "type": "integer",
+      "default": 6,
+      "description": "number of cpus"
+    },
+    "sort_threads": {
+      "type": "integer",
+      "default": 2,
+      "description": "sorting cpus"
+    },
+    "exclude_bed": {
+      "type": "string",
+      "default": "/workspaces/nextflow-wave-indapa/resources/cnv.excluded_regions.common_50.hg38.bed.gz",
+      "description": "cnv exclude regions"
+    },
+    "expected_bed": {
+      "type": "string",
+      "default": "/workspaces/nextflow-wave-indapa/resources/expected_cn.hg38.XX.bed",
+      "description": "expected CN regions"
+    },
+    "trgt_repeats": {
+      "type": "string",
+      "default": "/workspaces/nextflow-wave-indapa/resources/human_GRCh38_no_alt_analysis_set.trgt.v0.3.4.bed",
+      "description": "tandem repeat bed"
+    },
+    "trf_bed": {
+      "type": "string",
+      "default": "/workspaces/nextflow-wave-indapa/resources/human_GRCh38_no_alt_analysis_set.trf.bed"
+    },
+    "cnv_output_dir": {
+      "type": "string",
+      "default": "s3://xella-sequencing-test-data",
+      "description": "CNV results folder"
+    },
+    "trgt_output_dir": {
+      "type": "string",
+      "default": "s3://xella-sequencing-test-data",
+      "description": "TRGT  results folder"
+    },
+    "sv_output_dir": {
+      "type": "string",
+      "default": "s3://xella-sequencing-test-data",
+      "description": "pbsv results folder"
+    },
+    "deepvariant_output_dir": {
+      "type": "string",
+      "default": "s3://xella-sequencing-test-data",
+      "description": "deepvariant results folder"
+    },
+    "karyotype": {
+      "type": "string",
+      "default": "XX"
+    },
+    "deepvariant_threads": {
+      "type": "integer",
+      "default": 16
+    },
+    "hiphase_output_dir": {
+      "type": "string",
+      "default": "s3://xella-sequencing-test-data"
+    },
+    "fibertools_output_dir": {
+      "type": "string",
+      "default": "s3://xella-sequencing-test-data"
+    },
+    "pigeon_gtf": {
+      "type": "string",
+      "default": "/workspaces/nextflow-wave-indapa/resources/gencode.v39.annotation.sorted.gtf.gz"
+    },
+    "pigeon_tbi": {
+      "type": "string",
+      "default": "/workspaces/nextflow-wave-indapa/resources/gencode.v39.annotation.sorted.gtf.gz.tbi"
+    },
+    "vep_output_dir": {
+      "type": "string",
+      "default": "/workspaces/nextflow-wave-indapa/VEP-results"
+    }
+  },
+  "required": [
+    "samplesheet",
+    "aligned_output_dir",
+    "reference_index",
+    "reference",
+    "cpg_output_dir",
+    "cpgmodel"
+  ]
+}

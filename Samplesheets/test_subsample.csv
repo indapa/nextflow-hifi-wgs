@@ -1,0 +1,2 @@
+sample_id,bam_file
+TXHB101-0003,s3://2xhealth-prod-eremid-data/TXHB101/WGS/Methylation-5mc-6ma/TXHB101-0003_with_5mC.bam
