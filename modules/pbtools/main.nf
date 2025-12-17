@@ -427,7 +427,7 @@ process pb_call {
 process hiphase_small_variants {
     /* hiphase small variants only */
 
-    label 'high_memory_spot'
+    label 'high_memory'
     publishDir "${params.hiphase_output_dir}/${sample_id}", mode: 'copy', overwrite: true
     container "quay.io/pacbio/hiphase:1.5.0_build1"
     tag "$sample_id"
