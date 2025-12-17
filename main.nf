@@ -2,22 +2,21 @@
 
 nextflow.enable.dsl=2
 
-include { pbmm2_align; cpg_pileup; hificnv; trgt; pb_discover; pb_call; hiphase } from './modules/pbtools'
+include { pbmm2_align; cpg_pileup; cpg_pileup_filtered; hificnv; trgt; pb_discover; pb_call; hiphase_small_variants } from './modules/pbtools'
 include { mosdepth } from './modules/mosdepth'
-include { deepvariant; deepvariant_chr20 } from './modules/deepvariant'
-include {fibertools_extract} from './modules/fiberseq'
-include {annotate_vep} from './modules/ensemblvep'
+include { deepvariant; deepvariant_chr20; BCFTOOLS_STATS; bcftools_deepvariant_norm} from './modules/deepvariant'
+include {annotate_vep_no_phased; annotate_vep} from './modules/ensemblvep'
+include {bam_stats; filter_mapq_primary_alns} from './modules/samtools'
+include { PARSE_SAMTOOLS_BAM_STATS } from './modules/alignment_metrics'
+include {cpg_metrics} from './modules/CpG_metrics'
+include(split_bed_by_chrom) from './modules/cpg_postprocess'
 
-
-
-
-def required_params = ['reference', 'samplesheet', 'cpgmodel', 'karyotype', 'sv_output_dir']
+def required_params = ['reference', 'samplesheet',  'karyotype']
 for (param in required_params) {
     if (!params[param]) {
         error "Parameter '$param' is required!"
     }
 }
-
 
 // Replace the input_bams channel definition with this:
 def checkSamplesheet(samplesheet_file) {
@@ -42,33 +41,15 @@ Channel.fromPath(params.samplesheet)
     }
     .set { input_bams_ch }
 
-
+Channel.fromPath(params.samplesheet)
+    .splitCsv(header: true)
+    .map { row -> row.sample_id }
+    .set { sample_ids_ch }
 
 def REGIONS = [
-    'chr1',
-    'chr2',
-    'chr3',
-    'chr4',
-    'chr5',
-    'chr6',
-    'chr7',
-    'chr8',
-    'chr9',
-    'chr10',
-    'chr11',
-    'chr12',
-    'chr13',
-    'chr14',
-    'chr15',
-    'chr16',
-    'chr17',
-    'chr18',
-    'chr19',
-    'chr20',
-    'chr21',
-    'chr22',
-    'chrX'
-   
+    'chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10',
+    'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18', 'chr19', 
+    'chr20', 'chr21', 'chr22', 'chrX', 'chrY'
 ]
 
 // Create a channel from the fixed regions
@@ -76,48 +57,25 @@ Channel
     .fromList(REGIONS)
     .set { regions_ch }
 
-workflow {
-    
-    input_bams_ch.view { sample_id, bam -> "Sample ID: $sample_id, BAM: $bam" }
+// Named workflow for post-alignment analysis
+workflow POST_ALIGNMENT_ANALYSIS {
+    take:
+    aligned_bam_ch  // Channel: tuple(bam, bai)
+    sample_ids_ch   // Channel: val(sample_id)
 
-    regions_ch.view { region -> "BED region: $region" } 
+    main:
+   
 
-/* read alignment */
-    pbmm2_align(
-        file(params.reference),
-        //input_bams,
-        input_bams_ch,
-        params.cpu,
-        params.sort_threads
-    )
-    // print the pbmm2_align channel
+    /* aligned bam channel used for cnv, tandem repeat and sv analysis */
+    bam_bai_ch = aligned_bam_ch.map { bam, bai -> 
+        def sample_id = bam.baseName.replaceFirst(/\..*$/, '')
+        tuple(sample_id, bam, bai)
+    }
 
-    pbmm2_align.out.aligned_bam.view { "Aligned BAM: $it" }
+     /* read depth analysis */
+    mosdepth(bam_bai_ch)
 
- /* cpg calling  */
-    cpg_pileup(
-        pbmm2_align.out.aligned_bam,
-        file(params.reference),
-        file(params.reference_index),
-        file(params.cpgmodel)
-    )
-
-/* read depth analysis  */
-    mosdepth(pbmm2_align.out.aligned_bam)
-
-
-
-
-
-/* aligned bam channel used for cnv, tandem repeat and sv analysis */
-    bam_bai_ch = pbmm2_align.out.aligned_bam.map { bam, bai -> 
-    def sample_id = bam.baseName.replaceFirst(/\..*$/, '')
-    tuple(sample_id, bam, bai)
-}
-
-    bam_bai_ch.view { sample_id, bam, bai -> "Input: $sample_id, BAM: $bam, BAI: $bai" }
-
-/* cnv analysis */
+    /* cnv analysis */
     hificnv(
         bam_bai_ch,
         file(params.reference),
@@ -127,9 +85,9 @@ workflow {
         params.cpu
     )
 
-
-/*tandem repeat analysis  */
-    trgt(   bam_bai_ch,
+    /* tandem repeat analysis */
+    trgt(
+        bam_bai_ch,
         file(params.reference),
         file(params.reference_index),
         file(params.trgt_repeats),
@@ -137,74 +95,212 @@ workflow {
         params.cpu
     )
 
-
-
-
-/* SV analysis
-        regions
-        discover
-        call 
-*/
-  
-       bam_bai_ch
+    /* SV analysis - regions, discover, call */
+    bam_bai_ch
         .combine(regions_ch)
         .map { sample_id, bam, bai, region -> 
-            // For each region, create the tuple: [sample_id, region, bam, bai]
             [sample_id, region, bam, bai]
         }
         .set { bam_regions_ch }
 
-        
-        bam_regions_ch.view { sample_id, region, bam, bai -> "sample: $sample_id, bed: $region, BAM: $bam, BAI: $bai"}
+    pb_discover_results = pb_discover(bam_regions_ch, params.trf_bed)
 
-        pb_discover_results=pb_discover(bam_regions_ch, params.trf_bed )
+    // Group svsig files by sample_id
+    svsig_files_by_sample = pb_discover_results.groupTuple()
 
-         // Group svsig files by sample_id
-        svsig_files_by_sample = pb_discover_results.groupTuple()
+    // Run pb_call process
+    pb_call(svsig_files_by_sample, file(params.reference))
 
-        // Create a channel for the reference genome
-        reference_ch = channel.fromPath(params.reference)
+    /* deepvariant */
+    deepvariant(params.reference, params.reference_index, bam_bai_ch, params.deepvariant_threads)
 
-        // Run pb_call process
-        pb_call(svsig_files_by_sample, reference_ch)
+    /* bcftools normalization */
+    bcftools_deepvariant_norm(params.reference, deepvariant.out.vcf_tuple)
 
-        
+    // Run bcftools stats
+    BCFTOOLS_STATS(bcftools_deepvariant_norm.out.vcf_tuple)
 
-        //deepvariant
+    /* run cpg pileup */
 
-        deepvariant(params.reference, params.reference_index, bam_bai_ch, params.deepvariant_threads )
-        //deepvariant_chr20(params.reference, params.reference_index, bam_bai_ch, params.deepvariant_threads )
+    cpg_pileup(aligned_bam_ch)
+    split_bed_by_chrom(cpg_pileup.out.pileup_beds)
+
+    // Extract the cpg results to parquet format
+    cpg_tools_extract_to_parquet(cpg_pileup.out.pileup_beds)
+
+   
 
     
 
+    
+    /* vep annotate */
+    annotate_vep_no_phased(
+        bcftools_deepvariant_norm.out.vcf_tuple,
+        file(params.pigeon_gtf_bgzip),
+        file(params.pigeon_gtf_tbi),
+        file(params.reference)
+    )
 
-        //hiphase
+    bam_stats(bam_bai_ch)
 
-        hiphase(
-            deepvariant.out.vcf,
-            deepvariant.out.vcf_tbi,
-            pb_call.out.pb_call,
-            trgt.out.repeat_vcf,
-            pbmm2_align.out.aligned_bam,
-            file(params.reference)
+    //PARSE_SAMTOOLS_BAM_STATS(bam_stats.out.stats)
+}
+
+// Main workflow - full pipeline
+workflow {
+    /* read alignment */
+    pbmm2_align(
+        file(params.reference),
+        input_bams_ch,
+        params.cpu,
+        params.sort_threads
+    )
+
+    // Run post-alignment analysis
+    POST_ALIGNMENT_ANALYSIS(pbmm2_align.out.aligned_bam, sample_ids_ch)
+}
+
+// Named workflow for starting from aligned BAMs
+workflow FROM_ALIGNED_BAMS {
+    // Create channel for pre-aligned BAM files
+    // Assumes samplesheet has aligned BAM files instead of raw reads
+    Channel.fromPath(params.samplesheet)
+        .splitCsv(header: true)
+        .map { row -> 
+            def bam_file = file(row.bam_file)
+            def bai_file = file(row.bai_file) // Assumes BAI file is in samplesheet
+            if (!bam_file.exists()) {
+                error "BAM file not found: ${bam_file}"
+            }
+            if (!bai_file.exists()) {
+                error "BAI file not found: ${bai_file}"
+            }
+            return tuple(bam_file, bai_file)
+        }
+        .set { aligned_bam_ch }
+
+    // Run post-alignment analysis
+    POST_ALIGNMENT_ANALYSIS(aligned_bam_ch, sample_ids_ch)
+}
+
+// Entry point 3: Alignment only (pbmm2_align only)
+workflow ALIGN_ONLY {
+    /* read alignment */
+    pbmm2_align(
+        file(params.reference),
+        input_bams_ch,
+        params.cpu,
+        params.sort_threads
+    )
+
+     // create bam_bai_ch for deepvariant
+    bam_bai_ch_align_only = pbmm2_align.out.aligned_bam.map { bam, bai -> 
+        def sample_id = bam.baseName.replaceFirst(/\..*$/, '')
+        tuple(sample_id, bam, bai)
+    }
+
+    /* call bam stats */
+    bam_stats(bam_bai_ch_align_only)
+
+      /* read depth analysis */
+    mosdepth(bam_bai_ch_align_only)
+
+    //PARSE_SAMTOOLS_BAM_STATS(bam_stats.out.stats)
+
+}
+
+//entry point 4: DeepVariant only from aligned BAMs and BCFtools stats
+// start with aligned BAMs from samplesheet
+workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS {
+    /* read alignment */
+    pbmm2_align(
+        file(params.reference),
+        input_bams_ch,
+        params.cpu,
+        params.sort_threads
+    )
+
+    // create bam_bai_ch for deepvariant
+    bam_bai_ch = pbmm2_align.out.aligned_bam.map { bam, bai -> 
+        def sample_id = bam.baseName.replaceFirst(/\..*$/, '')
+        tuple(sample_id, bam, bai)
+    }
+
+    /* deepvariant */
+    deepvariant(params.reference, params.reference_index, bam_bai_ch, params.deepvariant_threads)
+
+    /* bcftools normalization */
+    bcftools_deepvariant_norm(params.reference, deepvariant.out.vcf_tuple)
+     
+    // Run bcftools stats
+    BCFTOOLS_STATS(bcftools_deepvariant_norm.out.vcf_tuple)
+}
+
+workflow DEEPVARIANT_HIPHASE_SMALL_VARIANTS {
+    
+        Channel.fromPath(params.samplesheet)
+            .splitCsv(header: true)
+            .map { row -> 
+                def sample_id = row.sample_id
+                def bam_file = file(row.bam_file)
+                def bai_file = file(row.bai_file)
+                if (!bam_file.exists()) {
+                    error "BAM file not found: ${bam_file}"
+                }
+                if (!bai_file.exists()) {
+                    error "BAI file not found: ${bai_file}"
+                }
+                return tuple(sample_id, bam_file, bai_file)
+            }
+            .set { aligned_bam_ch }
+    
+        /* deepvariant starting from samplesheet of aligned bams */
+        deepvariant(
+            file(params.reference),
+            file(params.reference_index),
+            aligned_bam_ch, params.deepvariant_threads
+        )
+    
+        // This combines VCF and BAM data by sample_id
+        def hiphase_input_ch = deepvariant.out.vcf_tuple
+            .join(aligned_bam_ch, by: 0)
+        
+
+
+        /* hiphase small variants phasing */
+        hiphase_small_variants(
+            hiphase_input_ch,                
+            file(params.reference)            
         )
 
+}
 
-        //fibertools extract 
+workflow DEEPVARIANT_ONLY {
+ 
+      Channel.fromPath(params.samplesheet)
+        .splitCsv(header: true)
+        .map { row -> 
+            def sample_id = row.sample_id
+            def bam_file = file(row.bam_file)
+            def bai_file = file(row.bai_file)
+            if (!bam_file.exists()) {
+                error "BAM file not found: ${bam_file}"
+            }
+            if (!bai_file.exists()) {
+                error "BAI file not found: ${bai_file}"
+            }
+            return tuple(sample_id, bam_file, bai_file)
+        }
+        .set { aligned_bam_ch }
 
-        fibertools_extract (
-            bam_bai_ch
-        )
+    /* deepvariant starting from samplesheet of aligned bams */
+    deepvariant(params.reference, params.reference_index, aligned_bam_ch, params.deepvariant_threads)
 
-        //vep annotate
+    /* bcftools normalization */
+    bcftools_deepvariant_norm(params.reference, deepvariant.out.vcf_tuple)
 
-        annotate_vep(
-            hiphase.out.phased_deepvariant,
-            file(params.pigeon_gtf),
-            file(params.pigeon_tbi),
-            file(params.reference)
-        )
-
+    // Run bcftools stats
+    BCFTOOLS_STATS(bcftools_deepvariant_norm.out.vcf_tuple)
 }
 
 
