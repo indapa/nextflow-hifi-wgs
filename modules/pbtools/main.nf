@@ -451,7 +451,7 @@ process hiphase_small_variants {
             --vcf ${vcf} \
             --output-vcf ${basename}.phased.vcf.gz \
             --threads ${task.cpus} \
-            --min-mapq 60 \
+            --min-mapq 20 \
             --disable-global-realignment \
             --output-bam ${sample_id}.haplotagged.bam \
             --stats-file ${basename}.stats.csv \
