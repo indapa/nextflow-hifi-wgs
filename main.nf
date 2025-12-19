@@ -241,7 +241,7 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
    
 
     /* deepvariant */
-    deepvariant(params.reference, params.reference_index, bam_bai_ch, params.deepvariant_threads, params.syt1_region)
+    deepvariant(params.reference, params.reference_index, pbmm2_align.out.aligned_bam, params.deepvariant_threads, params.syt1_region)
 
     /* bcftools normalization */
     bcftools_deepvariant_norm(params.reference, deepvariant.out.vcf_tuple)
