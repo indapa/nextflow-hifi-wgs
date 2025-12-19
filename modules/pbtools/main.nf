@@ -23,7 +23,6 @@ process pbmm2_align {
         --preset HIFI \\
         --sample ${sample_id} \\
         --log-level INFO \\
-        --unmapped \\
         --bam-index BAI \\
         $reference \\
         $bam \\
