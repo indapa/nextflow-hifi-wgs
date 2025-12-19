@@ -5,14 +5,13 @@ nextflow.enable.dsl=2
 include { pbmm2_align; hiphase_small_variants } from './modules/pbtools'
 include { deepvariant; deepvariant_chr20; BCFTOOLS_STATS; bcftools_deepvariant_norm; deepvariant_targeted_region} from './modules/deepvariant'
 
-def required_params = ['reference', 'samplesheet',  'karyotype']
+def required_params = ['reference', 'samplesheet'  ]
 for (param in required_params) {
     if (!params[param]) {
         error "Parameter '$param' is required!"
     }
 }
 
-// Replace the input_bams channel definition with this:
 def checkSamplesheet(samplesheet_file) {
     if (!file(samplesheet_file).exists()) {
         exit 1, "Samplesheet file not found: ${samplesheet_file}"
@@ -22,8 +21,8 @@ def checkSamplesheet(samplesheet_file) {
 
 ss_status = checkSamplesheet(params.samplesheet)
 
-// Create channels for input BAM files
-Channel.fromPath(params.samplesheet)
+// Create channels for input BAM files (DSL2 style)
+def input_bams_ch = Channel.fromPath(params.samplesheet)
     .splitCsv(header: true)
     .map { row -> 
         def sample_id = row.sample_id
@@ -33,7 +32,6 @@ Channel.fromPath(params.samplesheet)
         }
         return tuple(sample_id, bam_file)
     }
-    .set { input_bams_ch }
 
 Channel.fromPath(params.samplesheet)
     .splitCsv(header: true)
@@ -238,16 +236,20 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
         params.sort_threads
     )
 
-   
-
-    /* deepvariant */
-    deepvariant(params.reference, params.reference_index, pbmm2_align.out.aligned_bam, params.deepvariant_threads, params.syt1_region)
+    /* deepvariant - NOTE: using deepvariant_targeted_region */
+    deepvariant_targeted_region(
+        params.reference, 
+        params.reference_index, 
+        pbmm2_align.out.aligned_bam, 
+        params.deepvariant_threads, 
+        params.syt1_region
+    )
 
     /* bcftools normalization */
-    bcftools_deepvariant_norm(params.reference, deepvariant.out.vcf_tuple)
-     
-    // Run bcftools stats
-    BCFTOOLS_STATS(bcftools_deepvariant_norm.out.vcf_tuple)
+    bcftools_deepvariant_norm(
+        params.reference, 
+        deepvariant_targeted_region.out.vcf_tuple
+    )
 }
 
 
