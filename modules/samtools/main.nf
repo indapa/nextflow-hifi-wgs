@@ -256,6 +256,9 @@ process filter_mapq_primary_alns {
 }
 // generate stats for the bam file
 
+
+
+
 process bam_stats {
 
     /* generate stats for the bam file */
@@ -268,7 +271,7 @@ process bam_stats {
     container 'community.wave.seqera.io/library/samtools:1.21--0d76da7c3cf7751c'
 
     input:
-    tuple val(sample_id), path(bam), path(bai)
+    tuple val(sample_id), path(bam)
 
     output:
     tuple val(sample_id), path("${bam}.stats"), emit: stats
@@ -289,6 +292,8 @@ process bam_stats {
 
     """
 }
+
+
 
 process downsample_bam_stats {
 
