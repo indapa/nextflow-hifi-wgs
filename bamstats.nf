@@ -31,7 +31,7 @@ Channel.fromPath(params.samplesheet)
     .splitCsv(header: true)
     .map { row -> 
         def sample_id = row.sample_id
-        def bam = file(row.bam)
+        def bam = file(row.bam_file)
        
         if (!bam.exists()) {
             error "bam file not found: ${bam}"
