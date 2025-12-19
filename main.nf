@@ -210,36 +210,7 @@ workflow ALIGN_ONLY {
 }
 
 
-workflow ALIGN_DEEP_VARIANT_HIPHASE {
-    /* read alignment */
-    pbmm2_align(
-        file(params.reference),
-        input_bams_ch,
-        params.cpu,
-        params.sort_threads
-    )
 
-    // create bam_bai_ch for deepvariant
-    bam_bai_ch = pbmm2_align.out.aligned_bam.map { bam, bai -> 
-        def sample_id = bam.baseName.replaceFirst(/\..*$/, '')
-        tuple(sample_id, bam, bai)
-    }
-
-    /* deepvariant */
-    deepvariant(params.reference, params.reference_index, bam_bai_ch, params.deepvariant_threads)
-
-    // This combines VCF and BAM data by sample_id
-    def hiphase_input_ch = deepvariant.out.vcf_tuple
-        .join(bam_bai_ch, by: 0)
-    
-
-    /* hiphase small variants phasing */
-    hiphase_small_variants(
-        hiphase_input_ch,                
-        file(params.reference)            
-    )
-
-}
 
 //entry point 4: DeepVariant only from aligned BAMs and BCFtools stats
 // start with aligned BAMs from samplesheet
