@@ -125,7 +125,7 @@ process deepvariant {
 
 process PARSE_BCFTOOLS_STATS {
     tag "${sample_id}"
-    publishDir "${params.deepvariant_stats_dir}/${sample_id}", mode: 'copy', overwrite: true
+    publishDir "${params.deepvariant_output_dir}/${sample_id}", mode: 'copy', overwrite: true
 
     container "indapa/indapa-data-analysis:latest"
     
