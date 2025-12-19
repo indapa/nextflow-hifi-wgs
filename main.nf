@@ -264,44 +264,6 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS {
     BCFTOOLS_STATS(bcftools_deepvariant_norm.out.vcf_tuple)
 }
 
-workflow DEEPVARIANT_HIPHASE_SMALL_VARIANTS {
-    
-        Channel.fromPath(params.samplesheet)
-            .splitCsv(header: true)
-            .map { row -> 
-                def sample_id = row.sample_id
-                def bam_file = file(row.bam_file)
-                def bai_file = file(row.bai_file)
-                if (!bam_file.exists()) {
-                    error "BAM file not found: ${bam_file}"
-                }
-                if (!bai_file.exists()) {
-                    error "BAI file not found: ${bai_file}"
-                }
-                return tuple(sample_id, bam_file, bai_file)
-            }
-            .set { aligned_bam_ch }
-    
-        /* deepvariant starting from samplesheet of aligned bams */
-        deepvariant(
-            file(params.reference),
-            file(params.reference_index),
-            aligned_bam_ch, params.deepvariant_threads
-        )
-    
-        // This combines VCF and BAM data by sample_id
-        def hiphase_input_ch = deepvariant.out.vcf_tuple
-            .join(aligned_bam_ch, by: 0)
-        
-
-
-        /* hiphase small variants phasing */
-        hiphase_small_variants(
-            hiphase_input_ch,                
-            file(params.reference)            
-        )
-
-}
 
 workflow DEEPVARIANT_ONLY {
  
