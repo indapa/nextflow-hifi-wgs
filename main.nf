@@ -2,7 +2,7 @@
 
 nextflow.enable.dsl=2
 
-include { pbmm2_align; cpg_pileup; cpg_pileup_filtered; hificnv; trgt; pb_discover; pb_call; hiphase_small_variants } from './modules/pbtools'
+include { pbmm2_align; hiphase_small_variants } from './modules/pbtools'
 include { deepvariant; deepvariant_chr20; BCFTOOLS_STATS; bcftools_deepvariant_norm; deepvariant_targeted_region} from './modules/deepvariant'
 
 def required_params = ['reference', 'samplesheet',  'karyotype']
