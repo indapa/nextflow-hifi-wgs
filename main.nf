@@ -229,6 +229,27 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS {
     BCFTOOLS_STATS(bcftools_deepvariant_norm.out.vcf_tuple)
 }
 
+workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
+    /* read alignment */
+    pbmm2_align(
+        file(params.reference),
+        input_bams_ch,
+        params.cpu,
+        params.sort_threads
+    )
+
+   
+
+    /* deepvariant */
+    deepvariant(params.reference, params.reference_index, bam_bai_ch, params.deepvariant_threads, params.syt1_region)
+
+    /* bcftools normalization */
+    bcftools_deepvariant_norm(params.reference, deepvariant.out.vcf_tuple)
+     
+    // Run bcftools stats
+    BCFTOOLS_STATS(bcftools_deepvariant_norm.out.vcf_tuple)
+}
+
 
 workflow DEEPVARIANT_ONLY {
  
