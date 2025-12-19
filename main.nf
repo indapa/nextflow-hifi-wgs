@@ -3,13 +3,7 @@
 nextflow.enable.dsl=2
 
 include { pbmm2_align; cpg_pileup; cpg_pileup_filtered; hificnv; trgt; pb_discover; pb_call; hiphase_small_variants } from './modules/pbtools'
-include { mosdepth } from './modules/mosdepth'
 include { deepvariant; deepvariant_chr20; BCFTOOLS_STATS; bcftools_deepvariant_norm; deepvariant_targeted_region} from './modules/deepvariant'
-include {annotate_vep_no_phased; annotate_vep} from './modules/ensemblvep'
-include {bam_stats; filter_mapq_primary_alns} from './modules/samtools'
-include { PARSE_SAMTOOLS_BAM_STATS } from './modules/alignment_metrics'
-include {cpg_metrics} from './modules/CpG_metrics'
-include(split_bed_by_chrom) from './modules/cpg_postprocess'
 
 def required_params = ['reference', 'samplesheet',  'karyotype']
 for (param in required_params) {
