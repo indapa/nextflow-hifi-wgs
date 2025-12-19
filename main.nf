@@ -3,7 +3,7 @@
 nextflow.enable.dsl=2
 
 include { pbmm2_align; hiphase_small_variants } from './modules/pbtools'
-include { deepvariant; deepvariant_chr20; BCFTOOLS_STATS; bcftools_deepvariant_norm; deepvariant_targeted_region} from './modules/deepvariant'
+include { deepvariant; BCFTOOLS_STATS; bcftools_deepvariant_norm; deepvariant_targeted_region} from './modules/deepvariant'
 
 def required_params = ['reference', 'samplesheet'  ]
 for (param in required_params) {
@@ -22,32 +22,17 @@ def checkSamplesheet(samplesheet_file) {
 ss_status = checkSamplesheet(params.samplesheet)
 
 // Create channels for input BAM files (DSL2 style)
-def input_bams_ch = Channel.fromPath(params.samplesheet)
+def input_bams_ch = channel.fromPath(params.samplesheet)
     .splitCsv(header: true)
     .map { row -> 
         def sample_id = row.sample_id
         def bam_file = file(row.bam_file)
-        if (!bam_file.exists()) {
-            error "BAM file not found: ${bam_file}"
-        }
+        
         return tuple(sample_id, bam_file)
     }
 
-Channel.fromPath(params.samplesheet)
-    .splitCsv(header: true)
-    .map { row -> row.sample_id }
-    .set { sample_ids_ch }
 
-def REGIONS = [
-    'chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6', 'chr7', 'chr8', 'chr9', 'chr10',
-    'chr11', 'chr12', 'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18', 'chr19', 
-    'chr20', 'chr21', 'chr22', 'chrX', 'chrY'
-]
 
-// Create a channel from the fixed regions
-Channel
-    .fromList(REGIONS)
-    .set { regions_ch }
 
 // Named workflow for post-alignment analysis
 workflow POST_ALIGNMENT_ANALYSIS {
@@ -238,8 +223,8 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
 
     /* deepvariant - NOTE: using deepvariant_targeted_region */
     deepvariant_targeted_region(
-        params.reference, 
-        params.reference_index, 
+        file(params.reference), 
+        file(params.reference_index), 
         pbmm2_align.out.aligned_bam, 
         params.deepvariant_threads, 
         params.syt1_region
@@ -247,7 +232,7 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
 
     /* bcftools normalization */
     bcftools_deepvariant_norm(
-        params.reference, 
+        file(params.reference), 
         deepvariant_targeted_region.out.vcf_tuple
     )
 }
