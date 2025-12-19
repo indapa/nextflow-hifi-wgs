@@ -11,7 +11,7 @@ process pbmm2_align {
     val sort_threads
 
     output:
-    tuple path("${sample_id}.aligned.bam"), path("${sample_id}.aligned.bam.bai"), emit: aligned_bam
+    tuple path(val(sample_id), "${sample_id}.aligned.bam"), path("${sample_id}.aligned.bam.bai"), emit: aligned_bam
     //path "${$sample_id}.read_length_and_quality.tsv", emit: bam_rl_qual
     
     script:
@@ -435,6 +435,7 @@ process hiphase_small_variants {
     input:
     tuple val(sample_id), path(vcf), path(vcf_tbi), path(pbmm2_bam), path(pbmm2_bai)
     path (reference)
+    path (reference_index)
 
     output:
     tuple val(sample_id), path("*.phased.vcf.gz"), path("*.phased.vcf.gz.tbi"), emit: phased_vcf 
