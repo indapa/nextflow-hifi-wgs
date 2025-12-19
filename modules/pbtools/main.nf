@@ -11,8 +11,7 @@ process pbmm2_align {
     val sort_threads
 
     output:
-    tuple path(val(sample_id), "${sample_id}.aligned.bam"), path("${sample_id}.aligned.bam.bai"), emit: aligned_bam
-    //path "${$sample_id}.read_length_and_quality.tsv", emit: bam_rl_qual
+    tuple val(sample_id), path("${sample_id}.aligned.bam"), path("${sample_id}.aligned.bam.bai"), emit: aligned_bam    //path "${$sample_id}.read_length_and_quality.tsv", emit: bam_rl_qual
     
     script:
     """
