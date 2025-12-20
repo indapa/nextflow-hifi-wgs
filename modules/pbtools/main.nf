@@ -18,8 +18,10 @@ process pbmm2_align {
     pbmm2 --version
     pbmm2 align \\
         --sort \\
+        --strip \\
         -j $threads \\
         -J $sort_threads \\
+        --sort-memory 8G \\
         --preset HIFI \\
         --sample ${sample_id} \\
         --log-level INFO \\
