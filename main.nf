@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 
 include { pbmm2_align; hiphase_small_variants } from './modules/pbtools'
 include { deepvariant; BCFTOOLS_STATS; bcftools_deepvariant_norm; deepvariant_targeted_region} from './modules/deepvariant'
-include {bam_stats } from '/.modules/samtools'
+include { bam_stats } from './modules/samtools'
 
 // Remove the top-level checkSamplesheet call too!
 // Only check samplesheet in workflows that need it
