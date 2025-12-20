@@ -46,7 +46,10 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
         params.deepvariant_threads 
         
     )
-
+    // Transform [id, bam, bai] -> [id, bam]
+    ch_for_stats = pbmm2_align.out.aligned_bam
+        .map { sample_id, bam, bai -> tuple(sample_id, bam) }
+        
     bam_stats(ch_for_stats)
 
     /* bcftools normalization 
