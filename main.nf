@@ -4,6 +4,7 @@ nextflow.enable.dsl=2
 
 include { pbmm2_align; hiphase_small_variants } from './modules/pbtools'
 include { deepvariant; BCFTOOLS_STATS; bcftools_deepvariant_norm; deepvariant_targeted_region} from './modules/deepvariant'
+include {bam_stats } from '/.modules/samtools'
 
 // Remove the top-level checkSamplesheet call too!
 // Only check samplesheet in workflows that need it
@@ -35,52 +36,37 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
         params.sort_threads
     )
 
-    /* deepvariant - targeted region */
-    deepvariant_targeted_region(
+  
+
+    /* deepvariant  */
+    deepvariant(
         file(params.reference), 
         file(params.reference_index), 
         pbmm2_align.out.aligned_bam, 
-        params.deepvariant_threads, 
-        params.syt1_region
+        params.deepvariant_threads 
+        
     )
 
-    /* bcftools normalization */
+    bam_stats(ch_for_stats)
+
+    /* bcftools normalization 
     bcftools_deepvariant_norm(
         file(params.reference), 
-        deepvariant_targeted_region.out.vcf_tuple
+        deepvariant.out.vcf_tuple
     )
-}
+ */
+   /*
+    hiphase_input_ch = deepvariant.out.vcf_tuple
+        .join( pbmm2_align.out.aligned_bam )
 
-workflow HIPHASE_PHASING {
-    // ✅ Check hiphase_samplesheet only in this workflow
-    if (!params.hiphase_samplesheet) {
-        error "Parameter 'hiphase_samplesheet' is required for this workflow!"
-    }
-    
-    if (!file(params.hiphase_samplesheet).exists()) {
-        exit 1, "Samplesheet file not found: ${params.hiphase_samplesheet}"
-    }
-    
-    // ✅ Create channel only in this workflow
-    def hiphase_input_ch = channel.fromPath(params.hiphase_samplesheet)
-        .splitCsv(header: true)
-        .map { row -> 
-            def sample_id = row.sample_id
-            def vcf = file(row.vcf)
-            def vcf_tbi = file(row.vcf_tbi)
-            def bam = file(row.bam)
-            def bai = file(row.bai)
-            
-            return tuple(sample_id, vcf, vcf_tbi, bam, bai)
-        }
-    
-    log.info "Running HiPhase phasing workflow..."
-    log.info "Reference: ${params.reference}"
-    log.info "Samplesheet: ${params.hiphase_samplesheet}"
+
+    // Run HiPhase
     
     hiphase_small_variants(
         hiphase_input_ch,
-        file(params.reference),
-        file(params.reference_index)
+        params.reference,
+        params.reference_index
     )
+    */
 }
+
