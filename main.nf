@@ -2,7 +2,7 @@
 
 nextflow.enable.dsl=2
 
-include { pbmm2_align; hiphase_small_variants } from './modules/pbtools'
+include { pbmm2_align; pbmm2_align_syt1_region;  hiphase_small_variants } from './modules/pbtools'
 include { deepvariant; BCFTOOLS_STATS; bcftools_deepvariant_norm; deepvariant_targeted_region} from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 
@@ -29,7 +29,7 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
         }
     
     /* read alignment */
-    pbmm2_align(
+    pbmm2_align_syt1_region(
         file(params.reference),
         input_bams_ch,
         params.cpu,
@@ -39,15 +39,16 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
   
 
     /* deepvariant  */
-    deepvariant(
+    deepvariant_targeted_region(
         file(params.reference), 
         file(params.reference_index), 
-        pbmm2_align.out.aligned_bam, 
-        params.deepvariant_threads 
+        pbmm2_align_syt1_region.out.aligned_bam, 
+        params.deepvariant_threads,
+        params.syt1_region
         
     )
     // Transform [id, bam, bai] -> [id, bam]
-    ch_for_stats = pbmm2_align.out.aligned_bam
+    ch_for_stats = pbmm2_align_syt1_region.out.aligned_bam
         .map { sample_id, bam, bai -> tuple(sample_id, bam) }
         
     bam_stats(ch_for_stats)
@@ -58,9 +59,9 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
         deepvariant.out.vcf_tuple
     )
  */
-   /*
-    hiphase_input_ch = deepvariant.out.vcf_tuple
-        .join( pbmm2_align.out.aligned_bam )
+   
+    hiphase_input_ch = deepvariant_targeted_region.out.vcf_tuple
+        .join( pbmm2_align_syt1_region.out.aligned_bam )
 
 
     // Run HiPhase
@@ -70,6 +71,6 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
         params.reference,
         params.reference_index
     )
-    */
+    
 }
 
