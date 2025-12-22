@@ -32,9 +32,10 @@ workflow ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1 {
         }
     
     /* read alignment */
-    pbmm2_align_syt1_region(
+    pbmm2_align_region(
         file(params.reference),
         input_bams_ch,
+        params.syt1_region,  // Add the region parameter for SYT1 
         params.cpu,
         params.sort_threads
     )
@@ -79,7 +80,7 @@ workflow ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1 {
     )
 }
     
-}
+
 
 // =========================================================================
 //  WORKFLOW 2: HIPHASE + VEP ONLY (Entry Point)
