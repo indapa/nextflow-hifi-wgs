@@ -85,7 +85,7 @@ workflow ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1 {
 // =========================================================================
 //  WORKFLOW 2: HIPHASE + VEP ONLY (Entry Point)
 // =========================================================================
-workflow HIPHASE_VEP_ONLY_SYT1 {
+workflow HIPHASE_VEP_ONLY {
     
     // Safety Checks
     if (!params.hiphase_samplesheet) {
