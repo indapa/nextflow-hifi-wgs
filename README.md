@@ -26,6 +26,7 @@
 
 There are two entry points available:
 - `-entry ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1`: For alignment, DeepVariant variant calling in SYT1 region, phasing, and VEP annotation.
+This is the default entry point.
 - `-entry HIPHASE_VEP_ONLY`: for phasing and VEP annotation only on pre-called variants and BAM files.
 
 
