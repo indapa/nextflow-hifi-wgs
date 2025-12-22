@@ -5,6 +5,7 @@ nextflow.enable.dsl=2
 include { pbmm2_align; pbmm2_align_syt1_region;  hiphase_small_variants } from './modules/pbtools'
 include { deepvariant; BCFTOOLS_STATS; bcftools_deepvariant_norm; deepvariant_targeted_region} from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
+include { annotate_vep } from './modules/ensemblvep'
 
 // Remove the top-level checkSamplesheet call too!
 // Only check samplesheet in workflows that need it
@@ -72,5 +73,50 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
         params.reference_index
     )
     
+}
+
+// =========================================================================
+//  WORKFLOW 2: HIPHASE ONLY (Entry Point)
+// =========================================================================
+workflow HIPHASE_ONLY {
+    
+    // Safety Checks
+    if (!params.hiphase_samplesheet) {
+        error "Parameter 'hiphase_samplesheet' is required for the HIPHASE_ONLY workflow!"
+    }
+
+    // Parse HiPhase Samplesheet 
+    // EXPECTED COLUMNS: sample_id, vcf, vcf_tbi, bam, bai
+    def hiphase_ch = channel.fromPath(params.hiphase_samplesheet)
+        .splitCsv(header: true)
+        .map { row ->
+            return tuple(
+                row.sample_id,
+                file(row.vcf),
+                file(row.vcf_tbi),
+                file(row.bam),
+                file(row.bai)
+            )
+        }
+
+    // Run Process
+    hiphase_small_variants(
+        hiphase_ch,
+        params.reference,
+        params.reference_index
+    )
+
+    annotate_vep (
+        hiphase_small_variants.out.phased_vcf,
+        params.pigeon_gtf,
+        params.pigeon_gtf_tbi,
+        params.reference,
+        params.reference_index
+    )
+}
+
+// Default Workflow (runs if you don't specify -entry)
+workflow {
+    ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1()
 }
 

@@ -490,6 +490,7 @@ process hiphase_small_variants {
     output:
     tuple val(sample_id), path("*.phased.vcf.gz"), path("*.phased.vcf.gz.tbi"), emit: phased_vcf 
     tuple val(sample_id), path("*.stats.csv"), path("*.blocks.tsv"), path("*.summary.tsv"), emit: stats
+    tuple val(sample_id), path("*.haplotagged.bam"), path("*.haplotagged.bam.bai"), emit: haplotagged_bam
 
     script:
     def basename = vcf.simpleName  // Gets name without extension
@@ -504,9 +505,15 @@ process hiphase_small_variants {
             --min-mapq 20 \
             --disable-global-realignment \
             --ignore-read-groups \
+            --output-bam ${basename}.haplotagged.bam \
             --stats-file ${basename}.stats.csv \
             --blocks-file ${basename}.blocks.tsv \
             --summary-file ${basename}.summary.tsv
+
+    bcftools index -f  --tbi ${basename}.phased.vcf.gz
+    samtools index ${basename}.haplotagged.bam
+
+
 
    
     """
