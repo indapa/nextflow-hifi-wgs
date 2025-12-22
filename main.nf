@@ -7,10 +7,12 @@ include { deepvariant; BCFTOOLS_STATS; bcftools_deepvariant_norm; deepvariant_ta
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
 
-// Remove the top-level checkSamplesheet call too!
-// Only check samplesheet in workflows that need it
+// =========================================================================
+//  WORKFLOW 1: ALIGNMENT + DEEPVARIANT + HIPHASE + VEP (Entry Point)
+// =========================================================================
 
-workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
+
+workflow ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1 {
     // ✅ Check samplesheet only in this workflow
     if (!params.samplesheet) {
         error "Parameter 'samplesheet' is required for this workflow!"
@@ -54,12 +56,7 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
         
     bam_stats(ch_for_stats)
 
-    /* bcftools normalization 
-    bcftools_deepvariant_norm(
-        file(params.reference), 
-        deepvariant.out.vcf_tuple
-    )
- */
+ 
    
     hiphase_input_ch = deepvariant_targeted_region.out.vcf_tuple
         .join( pbmm2_align_syt1_region.out.aligned_bam )
@@ -72,13 +69,22 @@ workflow ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1 {
         params.reference,
         params.reference_index
     )
+
+    annotate_vep (
+        hiphase_small_variants.out.phased_vcf,
+        params.pigeon_gtf,
+        params.pigeon_gtf_tbi,
+        params.reference,
+        params.reference_index
+    )
+}
     
 }
 
 // =========================================================================
-//  WORKFLOW 2: HIPHASE ONLY (Entry Point)
+//  WORKFLOW 2: HIPHASE + VEP ONLY (Entry Point)
 // =========================================================================
-workflow HIPHASE_ONLY {
+workflow HIPHASE_VEP_ONLY_SYT1 {
     
     // Safety Checks
     if (!params.hiphase_samplesheet) {
@@ -117,6 +123,6 @@ workflow HIPHASE_ONLY {
 
 // Default Workflow (runs if you don't specify -entry)
 workflow {
-    ALIGN_DEEP_VARIANT_BCFTOOLS_STATS_SYT1()
+    ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1()
 }
 
