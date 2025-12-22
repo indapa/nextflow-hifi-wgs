@@ -33,18 +33,21 @@ This is the default entry point.
 The input samplesheet should be formatted as follows:
 
 ```
-sample_id,bam_path
+sample_id,bam_file
 sample1,/path/to/sample1.bam
 sample2,/path/to/sample2.bam
 ```
 
+The bam_file should point to un-aligned HiFi reads in BAM format.
+
 For hiphase samplesheet:
 
 ```
-sample_id,row.vcf,row.vcf_tbi,row.bam,row.bai
+sample_id,vcf,vcf_tbi,bam,bai
 sample1,/path/to/sample1.vcf,/path/to/sample1.vcf.tbi,/path/to/sample1.bam,/path/to/sample1.bai
 sample2,/path/to/sample2.vcf,/path/to/sample2.vcf.tbi,/path/to/sample2.bam,/path/to/sample2.bai
 ```
+The bam and bai files should point to aligned HiFi reads in BAM format. The vcf and vcf_tbi files should point to variant calls in VCF format from DeepVariant along with their index files.
 
 4. Monitor the progress and check the output files in the specified output directory.
 
