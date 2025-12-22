@@ -148,3 +148,44 @@ process pbmm2_align {
     """
 }
 
+process hiphase_small_variants {
+    /* hiphase small variants only */
+
+    label 'high_memory'
+    publishDir "${params.hiphase_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+    container "quay.io/pacbio/hiphase:1.5.0_build1"
+    tag "$sample_id"
+
+    input:
+    tuple val(sample_id), path(vcf), path(vcf_tbi), path(pbmm2_bam), path(pbmm2_bai)
+    path (reference)
+    path (reference_index)
+
+    output:
+    tuple val(sample_id), path("*.phased.vcf.gz"), path("*.phased.vcf.gz.tbi"), emit: phased_vcf 
+    tuple val(sample_id), path("*.stats.csv"), path("*.blocks.tsv"), path("*.summary.tsv"), emit: stats
+    tuple val(sample_id), path("*.haplotagged.bam"), path("*.haplotagged.bam.bai"), emit: haplotagged_bam
+
+    script:
+    def basename = vcf.simpleName  // Gets name without extension
+    """
+    hiphase --version
+    hiphase --reference ${reference} \
+        --bam ${pbmm2_bam} \
+        --vcf ${vcf} \
+        --output-vcf ${basename}.phased.vcf.gz \
+        --threads ${task.cpus} \
+        --min-mapq 20 \
+        --disable-global-realignment \
+        --ignore-read-groups \
+        --output-bam ${basename}.haplotagged.bam \
+        --stats-file ${basename}.stats.csv \
+        --blocks-file ${basename}.blocks.tsv \
+        --summary-file ${basename}.summary.tsv
+
+    bcftools index -f --tbi ${basename}.phased.vcf.gz
+    samtools index ${basename}.haplotagged.bam
+
+    """
+}
+
