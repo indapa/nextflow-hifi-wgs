@@ -3,12 +3,12 @@
 nextflow.enable.dsl=2
 
 include { pbmm2_align; pbmm2_align_syt1_region;  hiphase_small_variants } from './modules/pbtools'
-include { deepvariant; BCFTOOLS_STATS; bcftools_deepvariant_norm; deepvariant_targeted_region} from './modules/deepvariant'
+include {  deepvariant_targeted_region} from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
 
 // =========================================================================
-//  WORKFLOW 1: ALIGNMENT + DEEPVARIANT + HIPHASE + VEP (Entry Point)
+//  WORKFLOW 1: ALIGNMENT + DEEPVARIANT TARGETED REGION + HIPHASE + VEP (Entry Point)
 // =========================================================================
 
 
@@ -42,7 +42,7 @@ workflow ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1 {
 
   
 
-    /* deepvariant  */
+    /* deepvariant targeted region */
     deepvariant_targeted_region(
         file(params.reference), 
         file(params.reference_index), 
