@@ -7,7 +7,7 @@
 - Variant annotation using `Ensembl VEP`.
 
 ## Requirements
-- [Nextflow](https://www.nextflow.io/) version 20.10.0 or higher
+- [Nextflow](https://www.nextflow.io/) 
 - [Docker](https://www.docker.com/) or [Singularity](https://sylabs.io/docs/) for containerized execution
 - Sufficient computational resources for processing HiFi reads
 
