@@ -79,6 +79,74 @@ process deepvariant_targeted_region {
 
 }
 
+process deeptrio_targeted_region {
+    label 'high_memory'
+    tag "${family_id}"
+    publishDir "${params.deepvariant_output_dir}/DV_trio/${family_id}", mode: 'copy', overwrite: true
+    
+    // DeepTrio is included in the standard DeepVariant container
+    container "google/deepvariant:1.8.0"
+    
+    input:
+        path ref            // Reference genome
+        path ref_index      // Reference index
+        
+        // Input Tuple: Family ID + (ID, BAM, BAI) for Child, Parent1, Parent2
+        tuple val(family_id), \
+              val(child_id), path(child_bam), path(child_bai), \
+              val(p1_id),    path(p1_bam),    path(p1_bai), \
+              val(p2_id),    path(p2_bam),    path(p2_bai)
+
+        val threads                 // Number of shards
+        val target_region_string    // Target e.g. "chr20:1000000-2000000"
+        
+    output:
+        // Child Outputs
+        tuple val(child_id), path("${child_id}.vcf.gz"), path("${child_id}.vcf.gz.tbi"), emit: child_vcf
+        tuple val(child_id), path("${child_id}.g.vcf.gz"), path("${child_id}.g.vcf.gz.tbi"), emit: child_gvcf
+        
+        // Parent 1 Outputs
+        tuple val(p1_id), path("${p1_id}.vcf.gz"), path("${p1_id}.vcf.gz.tbi"), emit: p1_vcf
+        tuple val(p1_id), path("${p1_id}.g.vcf.gz"), path("${p1_id}.g.vcf.gz.tbi"), emit: p1_gvcf
+
+        // Parent 2 Outputs
+        tuple val(p2_id), path("${p2_id}.vcf.gz"), path("${p2_id}.vcf.gz.tbi"), emit: p2_vcf
+        tuple val(p2_id), path("${p2_id}.g.vcf.gz"), path("${p2_id}.g.vcf.gz.tbi"), emit: p2_gvcf
+
+    script:
+    def regions_flag = target_region_string ? "--regions \"${target_region_string}\"" : ""
+    
+    """
+    mkdir -p intermediate_results_dir
+
+    /opt/deepvariant/bin/deeptrio/run_deeptrio \
+        --model_type PACBIO \
+        --ref ${ref} \
+        --reads_child ${child_bam} \
+        --reads_parent1 ${p1_bam} \
+        --reads_parent2 ${p2_bam} \
+        --sample_name_child "${child_id}" \
+        --sample_name_parent1 "${p1_id}" \
+        --sample_name_parent2 "${p2_id}" \
+        --output_vcf_child ${child_id}.vcf.gz \
+        --output_vcf_parent1 ${p1_id}.vcf.gz \
+        --output_vcf_parent2 ${p2_id}.vcf.gz \
+        --output_gvcf_child ${child_id}.g.vcf.gz \
+        --output_gvcf_parent1 ${p1_id}.g.vcf.gz \
+        --output_gvcf_parent2 ${p2_id}.g.vcf.gz \
+        --num_shards ${threads} \
+        --intermediate_results_dir intermediate_results_dir \
+        ${regions_flag}
+    """
+
+    stub:
+    """
+    touch ${child_id}.vcf.gz ${child_id}.vcf.gz.tbi ${child_id}.g.vcf.gz ${child_id}.g.vcf.gz.tbi
+    touch ${p1_id}.vcf.gz ${p1_id}.vcf.gz.tbi ${p1_id}.g.vcf.gz ${p1_id}.g.vcf.gz.tbi
+    touch ${p2_id}.vcf.gz ${p2_id}.vcf.gz.tbi ${p2_id}.g.vcf.gz ${p2_id}.g.vcf.gz.tbi
+    """
+}
+
 
 process deepvariant {
     label 'high_memory'
