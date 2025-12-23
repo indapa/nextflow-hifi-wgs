@@ -3,7 +3,7 @@
 nextflow.enable.dsl=2
 
 include { pbmm2_align; pbmm2_align_syt1_region;  hiphase_small_variants } from './modules/pbtools'
-include {  deepvariant_targeted_region} from './modules/deepvariant'
+include {  deepvariant_targeted_region; deeptrio_targeted_region } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
 
@@ -80,6 +80,77 @@ workflow ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1 {
     )
 }
     
+// =========================================================================
+//  WORKFLOW 2: DEEPTRIO TARGETED REGION: run DeepTrio on trios in a samplesheet with aligned bams
+// ========================================================================
+
+
+
+workflow RUN_DEEPTRIO {
+    // Safety Checks
+    if (!params.trio_samplesheet) {
+        error "Parameter 'trio_samplesheet' is required for the RUN_DEEPTRIO workflow!"
+    }
+    
+    // 1. Parse CSV and map to [family_id, meta_map]
+    ch_samples = channel.fromPath(params.trio_samplesheet)
+        .splitCsv(header: true)
+        .map { row ->
+            def meta = [
+                id: row.family_id,
+                sample_id: row.sample_id,
+                bam: file(row.bam),
+                bai: file(row.bai),
+                role: row.role.toLowerCase()  // normalize role to lowercase
+            ]
+            return tuple(row.family_id, meta)
+        }
+
+    // 2. Group by Family ID -> Returns [family_id, [meta1, meta2, meta3]]
+    ch_trios = ch_samples
+        .groupTuple(by: 0) 
+        .map { family_id, members ->
+            
+            // Check we have exactly 3 members (optional safety check)
+            if (members.size() != 3) {
+                log.warn "Family ${family_id} does not have exactly 3 members. Skipping."
+                return null 
+            }
+
+            // Sort members into variables based on 'role' column
+            def child = members.find { it.role == 'child' || it.role == 'proband' }
+            def father = members.find { it.role == 'father' || it.role == 'dad' }
+            def mother = members.find { it.role == 'mother' || it.role == 'mom' }
+
+            // Ensure all roles were found
+            if (!child || !father || !mother) {
+                error "Family ${family_id} is missing a role! Found: ${members.role}"
+            }
+
+            // Return the specific Tuple structure required by the process
+            return tuple(
+                family_id,
+                child.id, child.bam, child.bai,
+                father.id, father.bam, father.bai,
+                mother.id, mother.bam, mother.bai
+            )
+        }
+
+        // view the trio channel
+
+        ch_trios.view()
+    
+
+        // 3. Run DeepTrio
+    deeptrio_targeted_region(
+        file(params.reference),
+        file(params.reference_index),
+        ch_trios,
+        params.threads,
+        params.syt1_region  
+    )
+}
+
 
 
 // =========================================================================
