@@ -3,9 +3,10 @@
 nextflow.enable.dsl=2
 
 include { pbmm2_align; pbmm2_align_syt1_region;  hiphase_small_variants } from './modules/pbtools'
-include {  deepvariant_targeted_region; deeptrio_targeted_region } from './modules/deepvariant'
+include {  deepvariant_targeted_region; deeptrio_targeted_region; glnexus_trio_merge } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
+include { whatshap_trio_phase } from './modules/whatshap'
 
 // =========================================================================
 //  WORKFLOW 1: ALIGNMENT + DEEPVARIANT TARGETED REGION + HIPHASE + VEP (Entry Point)
@@ -97,11 +98,10 @@ workflow RUN_DEEPTRIO {
         .splitCsv(header: true)
         .map { row ->
             def meta = [
-                id: row.family_id,
-                sample_id: row.sample_id,
+                id: row.sample_id,      // <--- Make sure this is row.sample_id, NOT row.family_id
                 bam: file(row.bam),
                 bai: file(row.bai),
-                role: row.role.toLowerCase()  // normalize role to lowercase
+                role: row.role.toLowerCase()
             ]
             return tuple(row.family_id, meta)
         }
@@ -138,10 +138,11 @@ workflow RUN_DEEPTRIO {
 
         // view the trio channel
 
-        ch_trios.view()
+        //ch_trios.view()
     
 
         // 3. Run DeepTrio
+    
     deeptrio_targeted_region(
         file(params.reference),
         file(params.reference_index),
@@ -149,6 +150,28 @@ workflow RUN_DEEPTRIO {
         params.deepvariant_threads,
         params.syt1_region  
     )
+
+    ch_glnexus_input = deeptrio_targeted_region.out.child_gvcf
+        .join(deeptrio_targeted_region.out.p1_gvcf)
+        .join(deeptrio_targeted_region.out.p2_gvcf)
+
+    // view ch_glnexus_input
+    //ch_glnexus_input.view()
+
+    glnexus_trio_merge(ch_glnexus_input)
+
+    ch_phasing_input = glnexus_trio_merge.out.joint_vcf
+        .join(ch_trios)
+    ch_phasing_input.view()
+
+    whatshap_trio_phase(
+        file(params.reference),
+        file(params.reference_index),
+        ch_phasing_input
+    )
+
+
+    
 }
 
 
