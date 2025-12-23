@@ -146,7 +146,7 @@ workflow RUN_DEEPTRIO {
         file(params.reference),
         file(params.reference_index),
         ch_trios,
-        params.threads,
+        params.deepvariant_threads,
         params.syt1_region  
     )
 }
