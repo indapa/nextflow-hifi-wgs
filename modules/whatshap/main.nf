@@ -1,7 +1,7 @@
 process whatshap_trio_phase {
     tag "${family_id}"
     publishDir "${params.deepvariant_output_dir}/DV_trio/${family_id}", mode: 'copy', overwrite: true
-    container "community.wave.seqera.io/library/pip_whatshap:1a9d53d13e552160"
+    container "indapa/whatshap-tabix"
 
     input:
     // 1. Reference Files
@@ -17,14 +17,15 @@ process whatshap_trio_phase {
 
     output:
     tuple val(family_id), path("${family_id}.trio_phased.vcf.gz"), emit: phased_vcf
+    path "${child_id}.haplotagged.bam", emit: haplotagged_bam
     path "${family_id}.ped", emit: ped_file
-    path "${family_id}.blocks.tsv", emit: block_stats  
+    path "${family_id}.blocks.tsv", emit: block_stats 
+    path "${family_id}.gtf", emit: block_gtf  
 
     script:
     """
     # 1. Create PED file
-    echo "${family_id} ${p1_id} 0 0 1 0" > ${family_id}.ped
-    echo "${family_id} ${p2_id} 0 0 2 0" >> ${family_id}.ped
+    
     echo "${family_id} ${child_id} ${p1_id} ${p2_id} 0 0" >> ${family_id}.ped
 
     # 2. Run Whatshap Phase
@@ -41,5 +42,16 @@ process whatshap_trio_phase {
         --block-list=${family_id}.blocks.tsv \
         ${family_id}.trio_phased.vcf.gz
     
+
+    # GTF 
+    whatshap stats --gtf=${family_id}.gtf ${family_id}.trio_phased.vcf.gz
+
+    #haplotag
+    tabix -p vcf ${family_id}.trio_phased.vcf.gz
+    whatshap haplotag -o ${child_id}.haplotagged.bam --reference ${reference} ${family_id}.trio_phased.vcf.gz ${child_bam}
+
+
+    
+
     """
 }
