@@ -1,0 +1,12 @@
+name: base
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  # htslib provides the 'tabix' and 'bgzip' executables
+  - bioconda::htslib
+  # procps-ng provides 'ps', often needed by workflow managers (Nextflow/Cromwell)
+  - conda-forge::procps-ng 
+  # MOVED: Install whatshap via conda to avoid compiling pysam from source
+  - bioconda::whatshap=2.8
+  - pip

@@ -1,0 +1,9 @@
+name: nextflow-env
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - openjdk=17
+  - nextflow
+  

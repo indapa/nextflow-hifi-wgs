@@ -69,7 +69,7 @@ process pbmm2_align_region {
     pbmm2 --version
     
     # 1. Create the BED file for the region of interest
-    region_bed=$(echo "${region_string}" | sed 's/[:-]/\t/g')
+    region_bed=\$(echo "${region_string}" | sed 's/[:-]/\t/g')
     echo -e "${region_bed}" > region.bed
 
     # 2. Pipeline Explanation:
