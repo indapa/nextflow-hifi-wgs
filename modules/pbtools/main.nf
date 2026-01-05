@@ -62,7 +62,7 @@ process pbmm2_align_region {
     val sort_threads
 
     output:
-    tuple val(sample_id), path("${sample_id}.aligned.bam"), path("${sample_id}.aligned.bam.bai"), emit: aligned_bam
+    tuple val(sample_id), path("${sample_id}${region_string}.aligned.bam"), path("${sample_id}.${region_string}.aligned.bam.bai"), emit: aligned_bam
 
     script:
     """
@@ -86,21 +86,22 @@ process pbmm2_align_region {
         ${reference} \
         ${bam} \
         | samtools view -u -h -L region.bed \
-        | samtools sort -@ ${sort_threads} -o ${sample_id}.aligned.bam
+        | samtools sort -@ ${sort_threads} -o ${sample_id}.${region_string}.aligned.bam
 
     # 3. Index the sorted BAM (Required for the output channel)
-    samtools index ${sample_id}.aligned.bam
+    samtools index ${sample_id}.${region_string}.aligned.bam
     """
 
     stub:
     """
-    touch ${sample_id}.aligned.bam
+    touch ${sample_id}.aligned.region.bam
     touch ${sample_id}.aligned.bam.bai
     """
 }
 
 
 process pbmm2_align {
+    // align to reference and output aligned and sorted bam and .bai
     label 'high_memory'
     publishDir "${params.aligned_output_dir}/${sample_id}", mode: 'copy', overwrite: true
     tag "$sample_id"
@@ -118,7 +119,7 @@ process pbmm2_align {
     script:
     """
     pbmm2 --version
-    echo -e "chr12\t78814774\t79502008" > region.bed
+    
 
     pbmm2 align \
         --sort \
@@ -130,11 +131,9 @@ process pbmm2_align {
         --sample ${sample_id} \
         --log-level INFO \
         $reference \
-        $bam | \
-        samtools view -b -h -L region.bed -o ${sample_id}.region_only.bam
+        $bam \
+        ${sample_id}.aligned.bam
         
-
-    
     """
 
     stub:
@@ -149,7 +148,7 @@ process pbmm2_align {
 }
 
 process hiphase_small_variants {
-    /* hiphase small variants only */
+    /* hiphase small variants only; single sample only */
 
     label 'high_memory'
     publishDir "${params.hiphase_output_dir}/${sample_id}", mode: 'copy', overwrite: true

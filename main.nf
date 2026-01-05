@@ -10,8 +10,42 @@ include { whatshap_trio_phase } from './modules/whatshap'
 
 // =========================================================================
 //  WORKFLOW 1: ALIGNMENT + DEEPVARIANT TARGETED REGION + HIPHASE + VEP (Entry Point)
+// 1. Align reads to genome, keeping only reads in region
+// 2. DeepVariant in targeted region
+// 3 HiPhase  genotypes
+// 4. Annotate with VEP phased genotypes
 // =========================================================================
 
+
+workflow ALIGNMENT_ONLY {
+
+    if (!params.samplesheet) {
+        error "Parameter 'samplesheet' is required for this workflow!"
+    }
+
+    if (!file(params.samplesheet).exists()) {
+        exit 1, "Samplesheet file not found: ${params.samplesheet}"
+    }
+    
+    // ✅ Create channel only in this workflow
+    def input_bams_ch = channel.fromPath(params.samplesheet)
+        .splitCsv(header: true)
+        .map { row -> 
+            def sample_id = row.sample_id
+            def bam_file = file(row.bam_file)
+            return tuple(sample_id, bam_file)
+        }
+
+    /* read alignment */
+    pbmm2_align(
+        file(params.reference),
+        input_bams_ch,
+        params.cpu,
+        params.sort_threads
+    )
+    bam_stats(pbmm2_align.out.aligned_bam)
+
+}
 
 workflow ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1 {
     // ✅ Check samplesheet only in this workflow
@@ -81,13 +115,27 @@ workflow ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1 {
     )
 }
     
-// =========================================================================
-//  WORKFLOW 2: DEEPTRIO TARGETED REGION: run DeepTrio on trios in a samplesheet with aligned bams
-// ========================================================================
+/* =========================================================================
+//  WORKFLOW DEEPTRIO TARGETED REGION: 
+    Run DeepTrio on trios in a samplesheet with aligned bams with pedigree information on a targeted region 
+    Run GLnexus to perform join variant calling on trio
+    Run WhatsHap phasing to phase proband genotype 
+
+    Samplesheet should be csv with following columns
+    
+    family_id,sample_id,bam,bai,role
+    
+    bam and bai columnsn point to location of aligned bam file
+    role should be one of the following: mother|mom, father|dad, child|proband 
+
+
+=========================================================================
+*/ 
 
 
 
-workflow RUN_DEEPTRIO {
+
+workflow RUN_DEEPTRIO_TARGETED_REGION {
     // Safety Checks
     if (!params.trio_samplesheet) {
         error "Parameter 'trio_samplesheet' is required for the RUN_DEEPTRIO workflow!"
@@ -177,7 +225,10 @@ workflow RUN_DEEPTRIO {
 
 
 // =========================================================================
-//  WORKFLOW 2: HIPHASE + VEP ONLY (Entry Point)
+//  WORKFLOW: HIPHASE + VEP ONLY (Entry Point)
+
+// 1. Run HiPhase on aligned bam
+// 2. Annotate phased VCF with VEP
 // =========================================================================
 workflow HIPHASE_VEP_ONLY {
     
