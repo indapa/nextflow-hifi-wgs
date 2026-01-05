@@ -62,7 +62,7 @@ process pbmm2_align_region {
     val sort_threads
 
     output:
-    tuple val(sample_id), path("${sample_id}${region_string}.aligned.bam"), path("${sample_id}.${region_string}.aligned.bam.bai"), emit: aligned_bam
+    tuple val(sample_id), path("${sample_id}.${region_string}.aligned.bam"), path("${sample_id}.${region_string}.aligned.bam.bai"), emit: aligned_bam
 
     script:
     """
@@ -94,8 +94,8 @@ process pbmm2_align_region {
 
     stub:
     """
-    touch ${sample_id}.aligned.region.bam
-    touch ${sample_id}.aligned.bam.bai
+    touch ${sample_id}.${region_string}.aligned.bam
+    touch ${sample_id}.${region_string}.aligned.bam.bai
     """
 }
 
