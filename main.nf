@@ -2,19 +2,34 @@
 
 nextflow.enable.dsl=2
 
-include { pbmm2_align; pbmm2_align_syt1_region;  hiphase_small_variants } from './modules/pbtools'
+include { pbmm2_align } from './modules/pbtools'
 include {  deepvariant_targeted_region; deeptrio_targeted_region; glnexus_trio_merge } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
 include { whatshap_trio_phase } from './modules/whatshap'
 
+
+
 // =========================================================================
-//  WORKFLOW 1: ALIGNMENT + DEEPVARIANT TARGETED REGION + HIPHASE + VEP (Entry Point)
+//  WORKFLOW READ ALIGNMENT + POST ALIGNMENT 
 // =========================================================================
 
 
-workflow ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1 {
+
+
+workflow  {
     // ✅ Check samplesheet only in this workflow
+
+    if (params.help) {
+        println """
+        Available workflows:
+        1. DEFAULT: nextflow run main.nf --samplesheet samples.csv performs read alignment and post-alignment analyses (e.g., bam stats)
+        2. RUN_DEEPTRIO: nextflow run main.nf -entry RUN_DEEPTRIO --trio_samplesheet trios.csv performs DeepTrio and WhatsHap phasing on
+        trios in the samplesheet with aligned bams
+        
+        """.stripIndent()
+        exit 0
+    }
     if (!params.samplesheet) {
         error "Parameter 'samplesheet' is required for this workflow!"
     }
@@ -33,59 +48,46 @@ workflow ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1 {
         }
     
     /* read alignment */
-    pbmm2_align_region(
+    pbmm2_align(
         file(params.reference),
         input_bams_ch,
-        params.syt1_region,  // Add the region parameter for SYT1 
         params.cpu,
         params.sort_threads
     )
 
-  
-
-    /* deepvariant targeted region */
-    deepvariant_targeted_region(
-        file(params.reference), 
-        file(params.reference_index), 
-        pbmm2_align_syt1_region.out.aligned_bam, 
-        params.deepvariant_threads,
-        params.syt1_region
-        
-    )
-    // Transform [id, bam, bai] -> [id, bam]
-    ch_for_stats = pbmm2_align_syt1_region.out.aligned_bam
-        .map { sample_id, bam, bai -> tuple(sample_id, bam) }
-        
-    bam_stats(ch_for_stats)
-
- 
-   
-    hiphase_input_ch = deepvariant_targeted_region.out.vcf_tuple
-        .join( pbmm2_align_syt1_region.out.aligned_bam )
-
-
-    // Run HiPhase
-    
-    hiphase_small_variants(
-        hiphase_input_ch,
-        params.reference,
-        params.reference_index
+    /* post alignment */
+    POST_ALIGNMENT(
+        pbmm2_align.out.aligned_bam
     )
 
-    annotate_vep (
-        hiphase_small_variants.out.phased_vcf,
-        params.pigeon_gtf,
-        params.pigeon_gtf_tbi,
-        params.reference,
-        params.reference_index
-    )
 }
-    
-// =========================================================================
-//  WORKFLOW 2: DEEPTRIO TARGETED REGION: run DeepTrio on trios in a samplesheet with aligned bams
-// ========================================================================
+
+workflow POST_ALIGNMENT {
+    // This can include processes like variant calling, phasing, annotation, etc.
+
+    take:
+    aligned_bam_ch
+
+    main:
+    bam_stats(
+        aligned_bam_ch
+    )
+
+}
 
 
+/* =========================================================================
+WORKFLOW 2: DEEPTRIO TARGETED REGION: run DeepTrio on trios in a samplesheet with aligned bams
+
+1. Parse samplesheet to group by family_id
+2. For each family, run deeptrio_targeted_region process
+3. Merge gVCFs with GLnexus
+4. Phase variants with Whatshap using trio information
+
+
+========================================================================
+
+*/ 
 
 workflow RUN_DEEPTRIO {
     // Safety Checks
@@ -176,48 +178,7 @@ workflow RUN_DEEPTRIO {
 
 
 
-// =========================================================================
-//  WORKFLOW 2: HIPHASE + VEP ONLY (Entry Point)
-// =========================================================================
-workflow HIPHASE_VEP_ONLY {
-    
-    // Safety Checks
-    if (!params.hiphase_samplesheet) {
-        error "Parameter 'hiphase_samplesheet' is required for the HIPHASE_ONLY workflow!"
-    }
 
-    // Parse HiPhase Samplesheet 
-    // EXPECTED COLUMNS: sample_id, vcf, vcf_tbi, bam, bai
-    def hiphase_ch = channel.fromPath(params.hiphase_samplesheet)
-        .splitCsv(header: true)
-        .map { row ->
-            return tuple(
-                row.sample_id,
-                file(row.vcf),
-                file(row.vcf_tbi),
-                file(row.bam),
-                file(row.bai)
-            )
-        }
 
-    // Run Process
-    hiphase_small_variants(
-        hiphase_ch,
-        params.reference,
-        params.reference_index
-    )
 
-    annotate_vep (
-        hiphase_small_variants.out.phased_vcf,
-        params.pigeon_gtf,
-        params.pigeon_gtf_tbi,
-        params.reference,
-        params.reference_index
-    )
-}
-
-// Default Workflow (runs if you don't specify -entry)
-workflow {
-    ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1()
-}
 
