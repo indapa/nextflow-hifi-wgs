@@ -15,7 +15,7 @@ process bam_stats {
     container 'community.wave.seqera.io/library/samtools:1.21--0d76da7c3cf7751c'
 
     input:
-    tuple val(sample_id), path(bam)
+    tuple val(sample_id), path(bam), path(bai)
 
     output:
     tuple val(sample_id), path("${bam}.stats"), emit: stats
