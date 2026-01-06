@@ -71,17 +71,17 @@ process pbmm2_align {
     """
     pbmm2 --version
    
-    pbmm2 align \\
-        --sort \\
-        -j $threads \\
-        -J $sort_threads \\
-        --preset HIFI \\
-        --sample ${sample_id} \\
-        --log-level INFO \\
-        --unmapped \\
-        --bam-index BAI \\
-        $reference \\
-        $bam \\
+    pbmm2 align \
+        --sort \
+        -j $threads \
+        -J $sort_threads \
+        --preset HIFI \
+        --sample ${sample_id} \
+        --log-level INFO \
+        --unmapped \
+        --bam-index BAI \
+        $reference \
+        $bam \
         ${sample_id}.aligned.bam
     
     """
