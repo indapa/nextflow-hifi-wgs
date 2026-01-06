@@ -24,7 +24,8 @@ workflow  {
         println """
         Available workflows:
         1. DEFAULT: nextflow run main.nf --samplesheet samples.csv performs read alignment and post-alignment analyses (e.g., bam stats)
-        2. RUN_DEEPTRIO: nextflow run main.nf -entry RUN_DEEPTRIO --trio_samplesheet trios.csv performs DeepTrio and WhatsHap phasing on\ntrios in the samplesheet with aligned bams
+        2. RUN_DEEPTRIO: nextflow run main.nf -entry RUN_DEEPTRIO --trio_samplesheet trios.csv performs DeepTrio and WhatsHap phasing on
+        trios in the samplesheet with aligned bams
         
         """.stripIndent()
         exit 0
