@@ -56,7 +56,7 @@ workflow  {
 
     /* post alignment */
     POST_ALIGNMENT(
-        pbmm2_align_region.out.aligned_bam
+        pbmm2_align.out.aligned_bam
     )
 
 }
