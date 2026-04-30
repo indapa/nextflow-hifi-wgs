@@ -76,8 +76,7 @@ workflow POST_ALIGNMENT {
     deepvariant_wgs(
         file(params.reference),
         file(params.reference_index),
-        aligned_bam_ch,
-        params.deepvariant_threads
+        aligned_bam_ch
     )
 
 }

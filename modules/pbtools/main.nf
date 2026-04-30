@@ -106,9 +106,8 @@ process deepvariant_wgs {
 
     input:
     path ref                                                          // Reference genome FASTA
-    path ref_index                                                    // Reference FASTA index (.fai)
-    tuple val(sample_id), path(bam), path(bam_index)                 // Aligned BAM + index
-    val threads                                                       // Number of shards/threads
+    path ref_index                                                    // Staged alongside ref so DeepVariant can locate the .fai index file
+    tuple val(sample_id), path(bam), path(bam_index)                 // Aligned BAM + index (.bai staged so DeepVariant can locate it)
 
     output:
     tuple val(sample_id), path("${sample_id}.deepvariant.vcf.gz"), path("${sample_id}.deepvariant.vcf.gz.tbi"), emit: vcf_tuple
@@ -125,7 +124,7 @@ process deepvariant_wgs {
         --reads ${bam} \\
         --output_vcf ${sample_id}.deepvariant.vcf.gz \\
         --output_gvcf ${sample_id}.deepvariant.g.vcf.gz \\
-        --num_shards ${threads}
+        --num_shards ${task.cpus}
     """
 
     stub:
