@@ -97,6 +97,10 @@ process pbmm2_align {
     """
 }
 
+// Re-export the canonical DeepVariant WGS process from the dedicated
+// DeepVariant module to keep tool ownership consistent and avoid
+// duplicating DeepVariant implementations under pbtools.
+include { deepvariant_wgs } from '../deepvariant/main'
 process hiphase_small_variants {
     /* hiphase small variants only */
 
