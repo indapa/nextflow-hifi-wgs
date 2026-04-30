@@ -2,8 +2,8 @@
 
 nextflow.enable.dsl=2
 
-include { pbmm2_align; deepvariant_wgs } from './modules/pbtools'
-include {  deepvariant_targeted_region; deeptrio_targeted_region; glnexus_trio_merge } from './modules/deepvariant'
+include { pbmm2_align } from './modules/pbtools'
+include {  glnexus_trio_merge; deepvariant_wgs } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
 include { whatshap_trio_phase } from './modules/whatshap'
