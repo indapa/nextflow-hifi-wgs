@@ -2,7 +2,7 @@
 
 nextflow.enable.dsl=2
 
-include { pbmm2_align } from './modules/pbtools'
+include { pbmm2_align; deepvariant_wgs } from './modules/pbtools'
 include {  deepvariant_targeted_region; deeptrio_targeted_region; glnexus_trio_merge } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
@@ -71,6 +71,13 @@ workflow POST_ALIGNMENT {
     main:
     bam_stats(
         aligned_bam_ch
+    )
+
+    deepvariant_wgs(
+        file(params.reference),
+        file(params.reference_index),
+        aligned_bam_ch,
+        params.deepvariant_threads
     )
 
 }
