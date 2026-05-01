@@ -7,6 +7,7 @@ include {  glnexus_trio_merge; deepvariant_wgs } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
 include { whatshap_trio_phase } from './modules/whatshap'
+include { MOSDEPTH; INFER_SEX; PLOT_DIST_COVERAGE} from './modules/mosdepth'
 
 
 
@@ -85,6 +86,11 @@ workflow POST_ALIGNMENT {
         file(params.reference_index)
     )
 
+     MOSDEPTH(aligned_bam_ch)
+
+    INFER_SEX(MOSDEPTH.out.summary)
+    
+    PLOT_DIST_COVERAGE(MOSDEPTH.out.global_dist)
 }
 
 
