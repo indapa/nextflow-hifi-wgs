@@ -74,6 +74,12 @@ workflow POST_ALIGNMENT {
         aligned_bam_ch
     )
 
+    mosdepth_run(aligned_bam_ch)
+
+    infer_sex(mosdepth_run.out.summary)
+    
+    plot_dist_coverage(mosdepth_run.out.global_dist)
+
     deepvariant_wgs(
         file(params.reference),
         file(params.reference_index),
@@ -86,11 +92,7 @@ workflow POST_ALIGNMENT {
         file(params.reference_index)
     )
 
-     mosdepth_run(aligned_bam_ch)
-
-    infer_sex(mosdepth_run.out.summary)
-    
-    plot_dist_coverage(mosdepth_run.out.global_dist)
+   
 }
 
 
