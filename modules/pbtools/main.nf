@@ -114,7 +114,7 @@ process cpg_methylation_calling {
 
     label 'high_memory'
     tag "$sample_id"
-    publishDir "${params.cpg_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+    publishDir "${((params.cpg_output_dir ?: '').toString().trim()) ? "${params.cpg_output_dir}/${sample_id}" : error("Missing required parameter: --cpg_output_dir. Set params.cpg_output_dir in nextflow.config or pass --cpg_output_dir on the command line.")}", mode: 'copy', overwrite: true
 
     container "quay.io/pacbio/pb-cpg-tools:3.0.0_build1"
 
