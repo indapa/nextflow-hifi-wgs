@@ -2,7 +2,7 @@
 
 nextflow.enable.dsl=2
 
-include { pbmm2_align } from './modules/pbtools'
+include { pbmm2_align; cpg_methylation_calling } from './modules/pbtools'
 include {  glnexus_trio_merge; deepvariant_wgs } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
@@ -77,6 +77,12 @@ workflow POST_ALIGNMENT {
         file(params.reference),
         file(params.reference_index),
         aligned_bam_ch
+    )
+
+    cpg_methylation_calling(
+        aligned_bam_ch,
+        file(params.reference),
+        file(params.reference_index)
     )
 
 }
