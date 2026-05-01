@@ -96,7 +96,9 @@ workflow POST_ALIGNMENT {
     sawfish_discover(
         aligned_bam_ch,
         file(params.reference),
-        file(params.reference_index)
+        file(params.reference_index),
+        file(params.sawfish_expected_cn),
+        file(params.sawfish_cnv_excluded_regions)
     )
 }
 

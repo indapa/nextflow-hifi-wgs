@@ -16,6 +16,8 @@ process sawfish_discover {
     tuple val(sample_id), path(bam), path(bai)
     path ref
     path ref_index
+    path expected_cn
+    path cnv_excluded_regions
 
     output:
     tuple val(sample_id), path("${sample_id}.sawfish.vcf.gz"), emit: vcf
@@ -24,9 +26,11 @@ process sawfish_discover {
     script:
     """
     sawfish discover \
+        --threads ${task.cpus} \
         --ref ${ref} \
         --bam ${bam} \
-        --threads ${task.cpus} \
+        --expected-cn ${expected_cn} \
+        --cnv-excluded-regions ${cnv_excluded_regions} \
         --output-dir sawfish_output
 
     # Rename and index the output VCF
