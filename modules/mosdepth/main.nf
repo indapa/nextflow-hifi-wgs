@@ -1,6 +1,7 @@
 process mosdepth_run {
 
     tag "$sample_id"
+    cpus 3
     publishDir "${params.mosdepth_output_dir}/${sample_id}", mode: 'copy', overwrite: true
     container "community.wave.seqera.io/library/mosdepth:0.3.10--259732f342cfce27"
 
