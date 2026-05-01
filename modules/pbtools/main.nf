@@ -100,6 +100,57 @@ process pbmm2_align {
 
 
 
+process cpg_methylation_calling {
+    /*
+     * 5mC CpG methylation calling from HiFi-aligned BAM using pb-CpG-tools.
+     *
+     * Assumes a non-haplotagged BAM, so only combined (all-reads) outputs are
+     * produced. For haplotagged BAMs, hap1/hap2 bed/bw files would also be
+     * emitted — add those to the output block if haplotype tracks are needed.
+     *
+     * Recommended defaults (model pileup + denovo modsites) are used.
+     * --min-mapq 20 and --min-coverage 10 are applied as requested.
+     */
+
+    label 'high_memory'
+    tag "$sample_id"
+    publishDir "${params.cpg_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+
+    container "quay.io/pacbio/pb-cpg-tools:3.0.0_build1"
+
+    input:
+    tuple val(sample_id), path(bam), path(bam_index)  // Aligned (non-haplotagged) BAM + BAI
+    path ref                                           // Reference genome FASTA (required for CRAM; staged for BAM)
+    path ref_index                                     // Reference FASTA index (.fai)
+
+    output:
+    tuple val(sample_id),
+          path("${sample_id}.combined.bed.gz"),
+          path("${sample_id}.combined.bed.gz.tbi"), emit: combined_bed
+    path "${sample_id}.combined.bw",                 emit: combined_bw
+
+    script:
+    """
+    aligned_bam_to_cpg_scores \\
+        --bam ${bam} \\
+        --output-prefix ${sample_id} \\
+        --ref ${ref} \\
+        --pileup-mode model \\
+        --modsites-mode denovo \\
+        --min-mapq 20 \\
+        --min-coverage 10 \\
+        --threads ${task.cpus}
+    """
+
+    stub:
+    """
+    touch ${sample_id}.combined.bed.gz
+    touch ${sample_id}.combined.bed.gz.tbi
+    touch ${sample_id}.combined.bw
+    """
+}
+
+
 process hiphase_small_variants {
     /* hiphase small variants only */
 
