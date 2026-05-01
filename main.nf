@@ -106,6 +106,9 @@ workflow RUN_DEEPTRIO {
     if (!params.trio_samplesheet) {
         error "Parameter 'trio_samplesheet' is required for the RUN_DEEPTRIO workflow!"
     }
+    if (!params.target_region) {
+        error "Parameter 'target_region' is required for the RUN_DEEPTRIO workflow!"
+    }
     
     // 1. Parse CSV and map to [family_id, meta_map]
     ch_samples = channel.fromPath(params.trio_samplesheet)
@@ -162,7 +165,7 @@ workflow RUN_DEEPTRIO {
         file(params.reference_index),
         ch_trios,
         params.deepvariant_threads,
-        params.syt1_region  
+        params.target_region  
     )
 
     ch_glnexus_input = deeptrio_targeted_region.out.child_gvcf
