@@ -127,7 +127,7 @@ process cpg_methylation_calling {
     tuple val(sample_id),
           path("${sample_id}.combined.bed.gz"),
           path("${sample_id}.combined.bed.gz.tbi"), emit: combined_bed
-    path "${sample_id}.combined.bw",                 emit: combined_bw
+    tuple val(sample_id), path("${sample_id}.combined.bw"), emit: combined_bw
 
     script:
     """
