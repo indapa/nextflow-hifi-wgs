@@ -79,6 +79,12 @@ workflow POST_ALIGNMENT {
         aligned_bam_ch
     )
 
+    cpg_methylation_calling(
+        aligned_bam_ch,           // tuple(sample_id, bam, bai) from pbmm2_align
+        file(params.reference),
+        file(params.reference_index)
+    )
+
 }
 
 
