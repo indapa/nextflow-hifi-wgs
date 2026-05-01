@@ -1,4 +1,4 @@
-process MOSDEPTH {
+process mosdepth_run {
 
     tag "$sample_id"
     publishDir "${params.mosdepth_output_dir}/${sample_id}", mode: 'copy', overwrite: true
@@ -20,7 +20,7 @@ process MOSDEPTH {
     mosdepth --version
 
     mosdepth \
-        --threads ${task.cpus - 1} \
+        ${args} \
         -n \
         --fast-mode \
         --by 10000 \
@@ -31,10 +31,8 @@ process MOSDEPTH {
     """
 }
 
-process PLOT_DIST_COVERAGE {
+process plot_dist_coverage {
     tag "$sample_id"
-    label 'process_low'
-    // Ensure this container has python3 and pandas-free python is fine for this script
     container "indapa/mosdepth-sex:latest" 
     publishDir "${params.mosdepth_output_dir}/${sample_id}", mode: 'copy', overwrite: true
 
@@ -52,10 +50,8 @@ process PLOT_DIST_COVERAGE {
 }
 
 
-process INFER_SEX {
+process infer_sex {
     tag "$sample_id"
-    label 'process_low'
-    // Ensure this container has python3 and pandas-free python is fine for this script
     container "indapa/mosdepth-sex:latest" 
     publishDir "${params.mosdepth_output_dir}/${sample_id}", mode: 'copy', overwrite: true
 
