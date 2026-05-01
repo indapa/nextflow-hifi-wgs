@@ -2,7 +2,7 @@
 
 nextflow.enable.dsl=2
 
-include { pbmm2_align } from './modules/pbtools'
+include { pbmm2_align; cpg_methylation_calling } from './modules/pbtools'
 include {  glnexus_trio_merge; deepvariant_wgs } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
@@ -79,6 +79,12 @@ workflow POST_ALIGNMENT {
         aligned_bam_ch
     )
 
+    cpg_methylation_calling(
+        aligned_bam_ch,           // tuple(sample_id, bam, bai) from pbmm2_align
+        file(params.reference),
+        file(params.reference_index)
+    )
+
 }
 
 
@@ -99,6 +105,9 @@ workflow RUN_DEEPTRIO {
     // Safety Checks
     if (!params.trio_samplesheet) {
         error "Parameter 'trio_samplesheet' is required for the RUN_DEEPTRIO workflow!"
+    }
+    if (!params.target_region) {
+        error "Parameter 'target_region' is required for the RUN_DEEPTRIO workflow!"
     }
     
     // 1. Parse CSV and map to [family_id, meta_map]
@@ -156,7 +165,7 @@ workflow RUN_DEEPTRIO {
         file(params.reference_index),
         ch_trios,
         params.deepvariant_threads,
-        params.syt1_region  
+        params.target_region  
     )
 
     ch_glnexus_input = deeptrio_targeted_region.out.child_gvcf
