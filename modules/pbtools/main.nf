@@ -151,6 +151,29 @@ process cpg_methylation_calling {
 }
 
 
+process sawfish_discover {
+    container "quay.io/pacbio/sawfish@sha256:18ba096219fea38d6b32f5706fb794a05cc5d1d6cc16e2a09e3a13d62d8181d4"
+
+    input:
+    tuple val(sample_id), path(bam), path(bai)
+    path ref
+    path ref_index
+    path expected_cn
+    path cnv_excluded_regions
+
+    script:
+    """
+    sawfish discover \
+        --threads ${task.cpus} \
+        --ref ${ref} \
+        --bam ${bam} \
+        --expected-cn ${expected_cn} \
+        --cnv-excluded-regions ${cnv_excluded_regions} \
+        --output-dir ${sample_id}_sawfish_discover
+    ...
+    """
+}
+
 process hiphase_small_variants {
     /* hiphase small variants only */
 
