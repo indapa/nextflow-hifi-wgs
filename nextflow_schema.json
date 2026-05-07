@@ -1,0 +1,75 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://raw.githubusercontent.com///nextflow_schema.json",
+    "title": " pipeline parameters",
+    "description": "",
+    "type": "object",
+    "properties": {
+        "samplesheet": {
+            "type": "string"
+        },
+        "hiphase_samplesheet": {
+            "type": "string",
+            "hidden": true
+        },
+        "trio_samplesheet": {
+            "type": "string"
+        },
+        "reference": {
+            "type": "string",
+            "default": "s3://pacbio-hifi-human-wgs-reference/dataset/hifi-wdl-resources-v2.0.0/GRCh38/human_GRCh38_no_alt_analysis_set.fasta"
+        },
+        "reference_index": {
+            "type": "string",
+            "default": "s3://pacbio-hifi-human-wgs-reference/dataset/hifi-wdl-resources-v2.0.0/GRCh38/human_GRCh38_no_alt_analysis_set.fasta.fai"
+        },
+        "output_dir": {
+            "type": "string",
+            "default": "s3://hifi-wgs-output"
+        },
+        "aligned_output_dir": {
+            "type": "string",
+            "default": "s3://hifi-wgs-output/aligned-bams"
+        },
+        "bam_stats_output_dir": {
+            "type": "string",
+            "default": "s3://hifi-wgs-output/bamstats"
+        },
+        "deepvariant_output_dir": {
+            "type": "string",
+            "default": "s3://hifi-wgs-output/deepvariant"
+        },
+        "hiphase_output_dir": {
+            "type": "string",
+            "default": "s3://hifi-wgs-output/hiphase"
+        },
+        "cpg_output_dir": {
+            "type": "string",
+            "default": "s3://hifi-wgs-output/cpg"
+        },
+        "mosdepth_output_dir": {
+            "type": "string",
+            "default": "s3://hifi-wgs-output/mosdepth"
+        },
+        "cpu": {
+            "type": "integer",
+            "default": 14
+        },
+        "sort_threads": {
+            "type": "integer",
+            "default": 2
+        },
+        "deepvariant_threads": {
+            "type": "integer",
+            "default": 16
+        },
+        "target_region": {
+            "type": "string",
+            "hidden": true
+        }
+    },
+    "required": [
+        "samplesheet",
+        "reference"
+    ]
+}
