@@ -59,10 +59,7 @@
             "type": "integer",
             "default": 2
         },
-        "deepvariant_threads": {
-            "type": "integer",
-            "default": 16
-        },
+       
         "target_region": {
             "type": "string",
             "hidden": true

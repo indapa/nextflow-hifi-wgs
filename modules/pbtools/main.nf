@@ -61,20 +61,21 @@ process pbmm2_align {
     input:
     path reference
     tuple val(sample_id), path(bam)
-    val threads
-    val sort_threads
 
     output:
-    tuple val(sample_id), path("${sample_id}.aligned.bam"), path("${sample_id}.aligned.bam.bai"), emit: aligned_bam    //path "${$sample_id}.read_length_and_quality.tsv", emit: bam_rl_qual
+    tuple val(sample_id), path("${sample_id}.aligned.bam"), path("${sample_id}.aligned.bam.bai"), emit: aligned_bam
     
     script:
+    // Calculate sort threads as a fraction of total CPUs (common pattern)
+    def sort_threads = Math.max(1, (task.cpus * 0.25).intValue())
+    
     """
     pbmm2 --version
    
     pbmm2 align \\
         --sort \\
-        -j $threads \\
-        -J $sort_threads \\
+        -j ${task.cpus} \\
+        -J ${sort_threads} \\
         --preset HIFI \\
         --sample ${sample_id} \\
         --log-level INFO \\
@@ -83,7 +84,6 @@ process pbmm2_align {
         $reference \\
         $bam \\
         ${sample_id}.aligned.bam
-    
     """
 
     stub:
@@ -93,7 +93,6 @@ process pbmm2_align {
     
     # Create mock BAM index file
     touch ${sample_id}.aligned.bam.bai
-    
     """
 }
 
