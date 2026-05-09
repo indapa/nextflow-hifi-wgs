@@ -200,7 +200,7 @@ process deepvariant_wgs {
 
     output:
     tuple val(sample_id), path("${sample_id}.deepvariant.vcf.gz"), path("${sample_id}.deepvariant.vcf.gz.tbi"), emit: vcf_tuple
-    tuple (val(sample_id), path("${sample_id}.deepvariant.g.vcf.gz"), path("${sample_id}.deepvariant.g.vcf.gz.tbi")), emit: gvcf_tuple
+    tuple val(sample_id), path("${sample_id}.deepvariant.g.vcf.gz"), path("${sample_id}.deepvariant.g.vcf.gz.tbi"), emit: gvcf_tuple
     
 
     script:
