@@ -28,7 +28,15 @@ process mosdepth_run {
         ${prefix} \
         ${bam}
 
-   
+   """
+
+   stub:
+    """
+    touch ${sample_id}.mosdepth.global.dist.txt
+    touch ${sample_id}.mosdepth.summary.txt
+    touch ${sample_id}.mosdepth.region.dist.txt
+    touch ${sample_id}.regions.bed.gz
+    touch ${sample_id}.regions.bed.gz.csi
     """
 }
 
@@ -48,6 +56,12 @@ process plot_dist_coverage {
     """
     python3 /opt/bin/plot-dist.py -o ${sample_id}.dist.html  ${global_summary}
     """ 
+
+    stub:
+    """
+    touch ${sample_id}.dist.html
+    """
+
 }
 
 
@@ -66,5 +80,11 @@ process infer_sex {
     script:
     """
     python3 /opt/bin/infer-sex.py --summary ${summary} --sample_id ${sample_id}
+    """
+
+    stub:
+    """
+    touch ${sample_id}_inferred_sex.csv
+    touch ${sample_id}_mean_depth.txt
     """
 }
