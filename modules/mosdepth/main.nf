@@ -67,7 +67,7 @@ process plot_dist_coverage {
 
 process infer_sex {
     tag "$sample_id"
-    container "indapa/mosdepth-sex@sha256:e2ef87e090197e9329fc0cfc14be6180aa11c76b2fe129e82764c50a4b9c2afb"
+    container "indapa/mosdepth-sex:latest"
     publishDir "${params.mosdepth_output_dir}/${sample_id}", mode: 'copy', overwrite: true
 
     input:
