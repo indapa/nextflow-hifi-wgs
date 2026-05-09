@@ -52,8 +52,7 @@ workflow  {
     pbmm2_align(
         file(params.reference),
         input_bams_ch,
-        params.cpu,
-        params.sort_threads
+        
     )
 
     /* post alignment */
