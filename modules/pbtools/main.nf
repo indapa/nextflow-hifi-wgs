@@ -67,9 +67,13 @@ process pbmm2_align {
     
     script:
     // Calculate sort threads as a fraction of total CPUs (common pattern)
-    def sort_threads = Math.max(1, (task.cpus * 0.25).intValue())
+    def sort_threads = 4
+    def sort_memory = task.ext.args ?: '-m 8G'
     
     """
+    # Set TMPDIR to use fast local storage if available
+    export TMPDIR=\${TMPDIR:-/tmp}
+    
     pbmm2 --version
    
     pbmm2 align \\
@@ -78,7 +82,7 @@ process pbmm2_align {
         -J ${sort_threads} \\
         --preset HIFI \\
         --sample ${sample_id} \\
-        --log-level INFO \\
+        --log-level DEBUG \\
         --unmapped \\
         --bam-index BAI \\
         $reference \\
