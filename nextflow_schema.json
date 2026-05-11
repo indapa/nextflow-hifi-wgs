@@ -25,40 +25,37 @@
         },
         "output_dir": {
             "type": "string",
-            "default": "s3://hifi-wgs-output"
+            "default": "s3://embedbio-results/hifi-wgs-output"
         },
         "aligned_output_dir": {
             "type": "string",
-            "default": "s3://hifi-wgs-output/aligned-bams"
+            "default": "s3://embedbio-results/hifi-wgs-output/aligned-bams"
         },
         "bam_stats_output_dir": {
             "type": "string",
-            "default": "s3://hifi-wgs-output/bamstats"
+            "default": "s3://embedbio-results/hifi-wgs-output/bamstats"
         },
         "deepvariant_output_dir": {
             "type": "string",
-            "default": "s3://hifi-wgs-output/deepvariant"
+            "default": "s3://embedbio-results/hifi-wgs-output/deepvariant"
         },
         "hiphase_output_dir": {
             "type": "string",
-            "default": "s3://hifi-wgs-output/hiphase"
+            "default": "s3://embedbio-results/hifi-wgs-output/hiphase"
         },
         "cpg_output_dir": {
             "type": "string",
-            "default": "s3://hifi-wgs-output/cpg"
+            "default": "s3://embedbio-results/hifi-wgs-output/cpg"
         },
         "mosdepth_output_dir": {
             "type": "string",
-            "default": "s3://hifi-wgs-output/mosdepth"
+            "default": "s3://embedbio-results/hifi-wgs-output/mosdepth"
         },
-        "cpu": {
-            "type": "integer",
-            "default": 14
+        "sawfish_output_dir": {
+            "type": "string",
+            "default": "s3://embedbio-results/hifi-wgs-output/sawfish"
         },
-        "sort_threads": {
-            "type": "integer",
-            "default": 2
-        },
+  
        
         "target_region": {
             "type": "string",
