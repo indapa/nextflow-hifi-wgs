@@ -164,6 +164,9 @@ process sawfish_discover {
     path expected_cn
     path cnv_excluded_regions
 
+
+    path "${sample_id}_sawfish_discover", emit: discover_dir
+
     script:
     """
     sawfish discover \
