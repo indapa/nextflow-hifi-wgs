@@ -2,7 +2,7 @@
 
 nextflow.enable.dsl=2
 
-include { pbmm2_align; cpg_methylation_calling } from './modules/pbtools'
+include { pbmm2_align; cpg_methylation_calling; sawfish_discover; sawfish_joint_call } from './modules/pbtools'
 include {  glnexus_trio_merge; deepvariant_wgs } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
@@ -73,6 +73,7 @@ workflow POST_ALIGNMENT {
         aligned_bam_ch
     )
 
+    
     deepvariant_wgs(
         file(params.reference),
         file(params.reference_index),
@@ -85,11 +86,29 @@ workflow POST_ALIGNMENT {
         file(params.reference_index)
     )
 
-     mosdepth_run(aligned_bam_ch)
+    mosdepth_run(aligned_bam_ch)
 
     infer_sex(mosdepth_run.out.summary)
+
+     sawfish_discover(
+        aligned_bam_ch
+        file(params.reference),
+        file(params.reference_index),
+        file(params.cnv_excluded_regions),
+        file(params.expected_cn)
+     
+    )
+
+    // collect discover outputs for joint calling
+    sawfish_joint_call(
+        sawfish_discover.out.collect(),
+        file(params.reference),
+        file(params.reference_index)
+    )
+
+
     
-    plot_dist_coverage(mosdepth_run.out.global_dist)
+   
 }
 
 

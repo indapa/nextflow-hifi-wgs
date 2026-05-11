@@ -155,7 +155,7 @@ process cpg_methylation_calling {
 
 
 process sawfish_discover {
-    container "quay.io/pacbio/sawfish@sha256:18ba096219fea38d6b32f5706fb794a05cc5d1d6cc16e2a09e3a13d62d8181d4"
+    container "quay.io/pacbio/sawfish:2.2.1_build1"
 
     input:
     tuple val(sample_id), path(bam), path(bai)
@@ -173,7 +173,42 @@ process sawfish_discover {
         --expected-cn ${expected_cn} \
         --cnv-excluded-regions ${cnv_excluded_regions} \
         --output-dir ${sample_id}_sawfish_discover
-    ...
+    
+    """
+}
+
+process sawfish_joint_call {
+    publishDir "${params.sawfish_output_dir}/joint_call", mode: 'copy'
+    container "quay.io/pacbio/sawfish:2.2.1_build1"
+
+    input:
+    // "path" here will accept a List of paths because of .collect()
+    path all_discover_dirs 
+    path reference
+    path reference_index
+
+    output:
+    path "joint_call_results", emit: joint_dir
+
+    script:
+    // transform the list [dir1, dir2, dir3] 
+    // into the string "--sample dir1 --sample dir2 --sample dir3"
+    def sample_args = all_discover_dirs.collect { "--sample $it" }.join(' ')
+
+    """
+    set -euo pipefail
+
+    echo "Running joint call on ${all_discover_dirs.size()} samples..."
+
+    sawfish joint-call \
+        --threads ${task.cpus} \
+        ${sample_args} \
+        --output-dir joint_call_results
+    """
+
+    stub:
+    """
+    mkdir -p joint_call_results
     """
 }
 
