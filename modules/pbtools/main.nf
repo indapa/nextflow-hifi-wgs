@@ -184,8 +184,8 @@ process sawfish_joint_call {
     input:
     // "path" here will accept a List of paths because of .collect()
     path all_discover_dirs 
-    path reference
-    path reference_index
+    
+
 
     output:
     path "joint_call_results", emit: joint_dir
