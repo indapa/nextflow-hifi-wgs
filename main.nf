@@ -92,12 +92,11 @@ workflow POST_ALIGNMENT {
 
 
      sawfish_discover(
-        aligned_bam_ch
+        aligned_bam_ch,
         file(params.reference),
         file(params.reference_index),
-        file(params.cnv_excluded_regions),
-        file(params.expected_cn)
-     
+        file(params.expected_cn),
+        file(params.cnv_excluded_regions)
     )
 
     // collect discover outputs for joint calling
