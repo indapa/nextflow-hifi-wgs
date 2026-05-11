@@ -73,6 +73,9 @@ workflow POST_ALIGNMENT {
         aligned_bam_ch
     )
 
+    mosdepth_run(aligned_bam_ch)
+
+    infer_sex(mosdepth_run.out.summary)
     
     deepvariant_wgs(
         file(params.reference),
@@ -86,9 +89,7 @@ workflow POST_ALIGNMENT {
         file(params.reference_index)
     )
 
-    mosdepth_run(aligned_bam_ch)
 
-    infer_sex(mosdepth_run.out.summary)
 
      sawfish_discover(
         aligned_bam_ch
