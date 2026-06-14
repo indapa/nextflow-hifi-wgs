@@ -30,7 +30,8 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/hifi-wgs-pipeline
+          # Hardcoding the public username here fixes the empty/invalid tag error
+          images: indapa/hifi-wgs-pipeline
           tags: |
             type=sha,format=short
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
