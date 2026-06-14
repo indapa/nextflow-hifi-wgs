@@ -1,15 +1,18 @@
-FROM mambaorg/micromamba:1.5.10-noble
+FROM python:3.12-slim
 
-# Copy the conda environment file
-COPY --chown=$MAMBA_USER:$MAMBA_USER conda.yml /tmp/conda.yml
+# Install procps so Nextflow can track process metrics
+RUN apt-get update && \
+    apt-get install -y procps && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install dependencies into the base environment
-# 'micromamba install' will now fetch the pre-built whatshap binary
-RUN micromamba install -y -n base -f /tmp/conda.yml \
-    && micromamba clean -a -y
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-# Set the container to run as root (optional, based on your previous file)
-USER root
+# Copy the script directly into a system PATH directory
+COPY bin/parse-alignment-stats.py /usr/local/bin/parse-alignment-stats.py
 
-# Ensure the conda environment is on the PATH
-ENV PATH="$MAMBA_ROOT_PREFIX/bin:$PATH"
+# Make it executable
+RUN chmod +x /usr/local/bin/parse-alignment-stats.py
+
+# Optional: Set a working directory for container runtime
+WORKDIR /data
