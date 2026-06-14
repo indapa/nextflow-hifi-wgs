@@ -6,8 +6,10 @@
 process bam_stats {
 
     /* generate stats for the bam file */
-    label 'low_memory'
-
+  
+    cpus 4
+    memory '8 GB'
+    
     tag "${sample_id}"
 
     publishDir "${params.bam_stats_output_dir}/${sample_id}", mode: 'copy', overwrite: true

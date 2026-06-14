@@ -7,10 +7,10 @@ include { bam_stats } from './modules/samtools'
 
 // Initialize parameters
 params.samplesheet = ''
-params.aligned_output_dir = ''
+params.bam_stats_output_dir = ''
 
 // Validate required parameters
-def required_params = ['samplesheet', 'aligned_output_dir']
+def required_params = ['samplesheet', 'bam_stats_output_dir']
 for (param in required_params) {
     if (!params[param]) {
         error "Parameter '$param' is required!"
