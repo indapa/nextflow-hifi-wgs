@@ -2,12 +2,14 @@
 
 nextflow.enable.dsl=2
 
+// Include modules
+include { bam_stats } from './modules/samtools'
 
+// Initialize parameters
+params.samplesheet = ''
+params.aligned_output_dir = ''
 
-include {bam_stats} from './modules/samtools'
-
-
-
+// Validate required parameters
 def required_params = ['samplesheet', 'aligned_output_dir']
 for (param in required_params) {
     if (!params[param]) {
@@ -15,44 +17,23 @@ for (param in required_params) {
     }
 }
 
-
-// Replace the input_bams channel definition with this:
-def checkSamplesheet(samplesheet_file) {
-    if (!file(samplesheet_file).exists()) {
-        exit 1, "Samplesheet file not found: ${samplesheet_file}"
-    }
-    return file(samplesheet_file)
-}
-
-ss_status = checkSamplesheet(params.samplesheet)
+// Safely instantiate the samplesheet file (checks existence implicitly if requested)
+def csv_file = file(params.samplesheet, checkIfExists: true)
 
 // Create channels for input BAM files
-Channel.fromPath(params.samplesheet)
+Channel.fromPath(csv_file)
     .splitCsv(header: true)
     .map { row -> 
         def sample_id = row.sample_id
-        def bam = file(row.bam_file)
-       
-        if (!bam.exists()) {
-            error "bam file not found: ${bam}"
-        }
+        def bam = file(row.bam_file, checkIfExists: true) // Automatically errors if missing
         return tuple(sample_id, bam)
     }
     .set { input_bam_ch }
 
-
-
-
-
 workflow {
-    
-    //input_bam_ch.view {  bam, bam_index -> "BAM: $bam BAI: $bam_index" }
+    // Corrected view syntax (uncomment to debug)
+    // input_bam_ch.view { sample_id, bam -> "ID: $sample_id BAM: $bam" }
 
-    bam_stats_ch = bam_stats (input_bam_ch)
-
-    
- 
-
-
-
+    // Invoke the process
+    bam_stats_ch = bam_stats(input_bam_ch)
 }
