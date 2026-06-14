@@ -155,6 +155,7 @@ process cpg_methylation_calling {
 
 
 process sawfish_discover {
+    tag "$sample_id"
     container "quay.io/pacbio/sawfish:2.2.1_build1"
 
     input:

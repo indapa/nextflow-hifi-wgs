@@ -76,6 +76,8 @@ workflow POST_ALIGNMENT {
     mosdepth_run(aligned_bam_ch)
 
     infer_sex(mosdepth_run.out.summary)
+
+    plot_dist_coverage(mosdepth_run.out.global_dist)
     
     deepvariant_wgs(
         file(params.reference),
@@ -92,12 +94,11 @@ workflow POST_ALIGNMENT {
 
 
      sawfish_discover(
-        aligned_bam_ch
+        aligned_bam_ch,
         file(params.reference),
         file(params.reference_index),
-        file(params.cnv_excluded_regions),
-        file(params.expected_cn)
-     
+        file(params.expected_cn),
+        file(params.cnv_excluded_regions)
     )
 
     // collect discover outputs for joint calling
