@@ -4,6 +4,7 @@ nextflow.enable.dsl=2
 
 // Include modules
 include { bam_stats } from './modules/samtools'
+include
 
 // Initialize parameters
 params.samplesheet = ''
@@ -36,4 +37,7 @@ workflow {
 
     // Invoke the process
     bam_stats_ch = bam_stats(input_bam_ch)
+
+    PARSE_SAMTOOLS_STATS(bam_stats_ch)
+    
 }
