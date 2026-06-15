@@ -9,7 +9,7 @@ process PARSE_SAMTOOLS_STATS {
 
     publishDir "${params.alignment_metrics_output_dir}/${sample_id}", mode: 'copy', overwrite: true
 
-    container 'indapa/hifi-wgs-pipeline:sha-6487af8' // Update with your actual Docker Hub username
+    container 'indapa/hifi-wgs-pipeline:latest' // Update with your actual Docker Hub username
 
     input:
     tuple val(sample_id), path(stats)
