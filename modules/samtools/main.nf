@@ -8,7 +8,7 @@ process bam_stats {
     /* generate stats for the bam file */
   
     cpus 2
-    memory '4 GB'
+    memory '2 GB'
 
     tag "${sample_id}"
 

@@ -179,16 +179,24 @@ process sawfish_discover {
 
 process hiphase_small_variants {
     /* hiphase small variants only */
-
-    label 'high_memory'
-    publishDir "${params.hiphase_output_dir}/${sample_id}", mode: 'copy', overwrite: true
-    container "quay.io/pacbio/hiphase:1.5.0_build1"
     tag "$sample_id"
+    
+    errorStrategy 'retry'
+    maxRetries 2
+    
+    cpus { 8 * task.attempt } 
+    memory { 32.GB * task.attempt }
+
+    // Using a dynamic path or relying on a config file is best, 
+    // but this works if params.hiphase_output_dir is defined in main.nf
+    publishDir "${params.hiphase_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+    
+    container "quay.io/pacbio/hiphase:1.5.0_build1"
 
     input:
     tuple val(sample_id), path(vcf), path(vcf_tbi), path(pbmm2_bam), path(pbmm2_bai)
-    path (reference)
-    path (reference_index)
+    path reference
+    path reference_index
 
     output:
     tuple val(sample_id), path("*.phased.vcf.gz"), path("*.phased.vcf.gz.tbi"), emit: phased_vcf 
@@ -196,7 +204,7 @@ process hiphase_small_variants {
     tuple val(sample_id), path("*.haplotagged.bam"), path("*.haplotagged.bam.bai"), emit: haplotagged_bam
 
     script:
-    def basename = vcf.simpleName  // Gets name without extension
+    def basename = vcf.simpleName
     """
     hiphase --version
     hiphase --reference ${reference} \
@@ -214,7 +222,6 @@ process hiphase_small_variants {
 
     bcftools index -f --tbi ${basename}.phased.vcf.gz
     samtools index ${basename}.haplotagged.bam
-
     """
 }
 
