@@ -27,7 +27,7 @@ process bam_stats {
     script:
     """
 
-    samtools stats --threads 4 ${bam} > ${bam}.stats
+    samtools stats --threads 2 ${bam} > ${bam}.stats
 
     """
 
