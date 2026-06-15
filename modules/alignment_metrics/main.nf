@@ -19,7 +19,7 @@ process PARSE_SAMTOOLS_STATS {
 
     script:
     """
-    parse-alignment-stats.py --statsfile ${stats} --sample_id ${sample_id} 
+    parse-alignment-stats.py -statsfile ${stats} -sample_id ${sample_id} 
     """
 
     stub:
