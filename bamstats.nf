@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 
 // Include modules
 include { bam_stats } from './modules/samtools'
-include
+include { PARSE_SAMTOOLS_STATS } from './modules/alignment_metrics'
 
 // Initialize parameters
 params.samplesheet = ''

@@ -26,3 +26,4 @@ process PARSE_SAMTOOLS_STATS {
     """
     touch ${sample_id}.aligned.bam.stats.csv
     """
+}
