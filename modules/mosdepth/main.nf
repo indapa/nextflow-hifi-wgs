@@ -1,7 +1,6 @@
 process mosdepth_run {
 
     tag "$sample_id"
-    cpus 3
     publishDir "${params.mosdepth_output_dir}/${sample_id}", mode: 'copy', overwrite: true
     container "community.wave.seqera.io/library/mosdepth:0.3.10--259732f342cfce27"
 
@@ -12,7 +11,7 @@ process mosdepth_run {
     tuple val(sample_id), path("${sample_id}.mosdepth.global.dist.txt"), emit: global_dist
     tuple val(sample_id), path("${sample_id}.mosdepth.summary.txt"), emit: summary
     tuple val(sample_id), path("${sample_id}.mosdepth.region.dist.txt"), emit: region_dist
-    tuple val(sample_id), path("${sample_id}.regions.bed.gz"),path("${sample_id}.regions.bed.gz.csi"), emit: bed
+    tuple val(sample_id), path("${sample_id}.regions.bed.gz"), path("${sample_id}.regions.bed.gz.csi"), emit: bed
 
     script:
     def args = task.cpus > 1 ? "--threads ${task.cpus - 1}" : ""
@@ -27,8 +26,8 @@ process mosdepth_run {
         --by 10000 \
         ${prefix} \
         ${bam}
+    """
 
-   """
 
    stub:
     """
