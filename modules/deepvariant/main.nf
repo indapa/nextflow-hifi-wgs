@@ -187,7 +187,7 @@ process glnexus_trio_merge {
 
 
 process deepvariant_wgs {
-    label 'high_memory'
+    
     tag "$sample_id"
     publishDir "${params.deepvariant_output_dir}/${sample_id}", mode: 'copy', overwrite: true
     
