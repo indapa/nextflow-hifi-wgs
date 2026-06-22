@@ -214,8 +214,7 @@ process deepvariant_wgs {
         --reads ${bam} \\
         --output_vcf ${sample_id}.deepvariant.vcf.gz \\
         --output_gvcf ${sample_id}.deepvariant.g.vcf.gz \\
-        --num_shards ${task.cpus} \\
-        ${args}
+        --num_shards ${task.cpus} 
     """
 
     stub:
