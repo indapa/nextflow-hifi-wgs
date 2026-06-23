@@ -193,7 +193,7 @@ process sawfish_discover {
 process sawfish_joint_call {
     
     publishDir "${params.sawfish_output_dir}/joint_call", mode: 'copy'
-    container "quay.io/pacbio/sawfish@sha256:18ba096219fea38d6b32f5706fb794a05cc5d1d6cc16e2a09e3a13d62d8181d4"
+    container "quay.io/pacbio/sawfish:2.2.1_build1"
 
     input:
     // "path" here will accept a List of paths because of .collect()
