@@ -1,0 +1,2 @@
+sample_id,bam_file
+HG002,s3://pacbio-datasets/Revio/HG002/m84005_220919_232112_s2.hifi_reads.bam
