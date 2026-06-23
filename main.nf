@@ -141,8 +141,7 @@ workflow POST_ALIGNMENT {
 
     sawfish_joint_call(
         sawfish_discover.out.discover_dir.collect(),
-        file(params.reference),
-        file(params.reference_index)
+        
     )
 }
 
