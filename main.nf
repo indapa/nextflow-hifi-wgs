@@ -89,6 +89,7 @@ workflow POST_ALIGNMENT {
     aligned_bam_ch
 
     main:
+    /*
     bam_stats(aligned_bam_ch)
 
     deepvariant_wgs(
@@ -104,6 +105,7 @@ workflow POST_ALIGNMENT {
     )
 
     mosdepth_run(aligned_bam_ch)
+    */
 
     infer_sex(mosdepth_run.out.summary)
 
