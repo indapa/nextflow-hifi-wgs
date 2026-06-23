@@ -157,7 +157,7 @@ process cpg_methylation_calling {
 process sawfish_discover {
     
     tag "$sample_id"
-    container "quay.io/pacbio/sawfish@sha256:18ba096219fea38d6b32f5706fb794a05cc5d1d6cc16e2a09e3a13d62d8181d4"
+    container "quay.io/pacbio/sawfish:2.2.1_build1"
     
     input:
     tuple val(sample_id), path(bam), path(bam_index), path(expected_bed)
