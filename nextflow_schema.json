@@ -25,11 +25,11 @@
         },
         "output_dir": {
             "type": "string",
-            "default": "s3://embedbio-results"
+            "default": "s3://embedbio-results/hifi-wgs-output"
         },
         "aligned_output_dir": {
             "type": "string",
-            "default": "s3://embedbio-results/hifi-wgs-output/aligned-bams/"
+            "default": "s3://embedbio-results/hifi-wgs-output/aligned-bams"
         },
         "bam_stats_output_dir": {
             "type": "string",
@@ -51,18 +51,21 @@
             "type": "string",
             "default": "s3://embedbio-results/hifi-wgs-output/mosdepth"
         },
-        "cpu": {
-            "type": "integer",
-            "default": 14
-        },
-        "sort_threads": {
-            "type": "integer",
-            "default": 2
-        },
-       
-        "target_region": {
+        "expected_XX_bed": {
             "type": "string",
-            "hidden": true
+            "default": "s3://pacbio-datasets/resources/expected_cn/expected_cn.hg38.XX.bed"
+        },
+        "expected_XY_bed": {
+            "type": "string",
+            "default": "s3://pacbio-datasets/resources/expected_cn/expected_cn.hg38.XY.bed"
+        },
+        "excluded_bed": {
+            "type": "string",
+            "default": "s3://pacbio-datasets/resources/cnv_excluded_regions/annotation_and_common_cnv.hg38.bed.gz"
+        },
+        "sawfish_output_dir": {
+            "type": "string",
+            "default": "s3://embedbio-results/hifi-wgs-output/sawfish2"
         }
     },
     "required": [
