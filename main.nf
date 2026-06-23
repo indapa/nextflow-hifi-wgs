@@ -103,9 +103,9 @@ workflow POST_ALIGNMENT {
         file(params.reference),
         file(params.reference_index)
     )
-
-    mosdepth_run(aligned_bam_ch)
     */
+    mosdepth_run(aligned_bam_ch)
+    
 
     infer_sex(mosdepth_run.out.summary)
 
