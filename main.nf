@@ -89,7 +89,7 @@ workflow POST_ALIGNMENT {
     aligned_bam_ch
 
     main:
-    /*
+    
     bam_stats(aligned_bam_ch)
 
     deepvariant_wgs(
@@ -103,7 +103,7 @@ workflow POST_ALIGNMENT {
         file(params.reference),
         file(params.reference_index)
     )
-    */
+    
     mosdepth_run(aligned_bam_ch)
     
 
