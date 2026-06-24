@@ -112,7 +112,7 @@ workflow POST_ALIGNMENT {
     plot_dist_coverage(mosdepth_run.out.global_dist)
 
     // Determine expected BED file based on inferred sex
-    def expected_bed_ch = infer_sex.out.sex.map { sample_id, sex_csv ->
+    expected_bed_ch = infer_sex.out.sex.map { sample_id, sex_csv ->
         def lines = sex_csv.readLines()
         def sex = lines.size() > 1 ? lines[1].split(',')[3].trim() : 'UNKNOWN'
 
@@ -130,7 +130,7 @@ workflow POST_ALIGNMENT {
 
     // Join BAM channel with the correct BED file channel by sample_id
     // Creates: [sample_id, bam, bai, expected_bed]
-    def sawfish_in_ch = aligned_bam_ch.join(expected_bed_ch, by: 0)
+     sawfish_in_ch = aligned_bam_ch.join(expected_bed_ch, by: 0)
 
     sawfish_discover(
         sawfish_in_ch,
