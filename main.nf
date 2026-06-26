@@ -102,7 +102,7 @@ workflow POST_ALIGNMENT {
 
     aligned_bam_ch.join(deepvariant_wgs.out.vcf_tuple, by: 0)
         .map { sample_id, bam, bai, vcf, vcf_tbi ->
-            return tuple(sample_id, bam, bai, vcf, vcf_tbi)
+            tuple(sample_id, vcf, vcf_tbi, bam, bai)
         }
         .set { aligned_bam_with_vcf_ch }
 
