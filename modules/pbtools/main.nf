@@ -115,7 +115,7 @@ process cpg_methylation_calling {
      * --min-mapq 20 and --min-coverage 10 are applied as requested.
      */
 
-    label 'high_memory'
+   
     tag "$sample_id"
     publishDir "${((params.cpg_output_dir ?: '').toString().trim()) ? "${params.cpg_output_dir}/${sample_id}" : error("Missing required parameter: --cpg_output_dir. Set params.cpg_output_dir in nextflow.config or pass --cpg_output_dir on the command line.")}", mode: 'copy', overwrite: true
 
@@ -225,18 +225,16 @@ process sawfish_joint_call {
     """
 }
 
+
+
+
 process hiphase_small_variants {
     /* hiphase small variants only */
     tag "$sample_id"
     
-    errorStrategy 'retry'
-    maxRetries 2
     
-    cpus { 8 * task.attempt } 
-    memory { 32.GB * task.attempt }
 
-    // Using a dynamic path or relying on a config file is best, 
-    // but this works if params.hiphase_output_dir is defined in main.nf
+    
     publishDir "${params.hiphase_output_dir}/${sample_id}", mode: 'copy', overwrite: true
     
     container "quay.io/pacbio/hiphase:1.5.0_build1"

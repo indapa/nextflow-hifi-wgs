@@ -2,7 +2,7 @@
 
 nextflow.enable.dsl=2
 
-include { pbmm2_align; cpg_methylation_calling; sawfish_discover; sawfish_joint_call } from './modules/pbtools'
+include { pbmm2_align; cpg_methylation_calling; sawfish_discover; sawfish_joint_call; hiphase_small_variants } from './modules/pbtools'
 include { glnexus_trio_merge; deepvariant_wgs } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
@@ -98,8 +98,23 @@ workflow POST_ALIGNMENT {
         aligned_bam_ch
     )
 
+    //join aligned_bam_ch with the output of deepvariant_wgs by sample_id
+
+    aligned_bam_ch.join(deepvariant_wgs.out.vcf_tuple, by: 0)
+        .map { sample_id, bam, bai, vcf, vcf_tbi ->
+            return tuple(sample_id, bam, bai, vcf, vcf_tbi)
+        }
+        .set { aligned_bam_with_vcf_ch }
+
+
+    hiphase_small_variants(
+        aligned_bam_with_vcf_ch,
+        file(params.reference),
+        file(params.reference_index)
+    )    
+
     cpg_methylation_calling(
-        aligned_bam_ch,
+        hiphase_small_variants.out.haplotagged_bam,
         file(params.reference),
         file(params.reference_index)
     )
