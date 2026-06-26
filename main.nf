@@ -126,7 +126,7 @@ workflow WGS_TRIO {
         }
 
     // 5. Run DeepTrio
-    deeptrio_wgs(params.reference, params.reference_index, deeptrio_input_ch)
+    deeptrio_wgs(file(params.reference), file(params.reference_index), deeptrio_input_ch)
 
     // GLNexus merge
     // Reconstruct the merged input tuple grouped by family_id
