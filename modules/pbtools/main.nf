@@ -115,7 +115,7 @@ process cpg_methylation_calling {
      * --min-mapq 20 and --min-coverage 10 are applied as requested.
      */
 
-    label 'high_memory'
+   
     tag "$sample_id"
     publishDir "${((params.cpg_output_dir ?: '').toString().trim()) ? "${params.cpg_output_dir}/${sample_id}" : error("Missing required parameter: --cpg_output_dir. Set params.cpg_output_dir in nextflow.config or pass --cpg_output_dir on the command line.")}", mode: 'copy', overwrite: true
 
@@ -130,7 +130,18 @@ process cpg_methylation_calling {
     tuple val(sample_id),
           path("${sample_id}.combined.bed.gz"),
           path("${sample_id}.combined.bed.gz.tbi"), emit: combined_bed
-    tuple val(sample_id), path("${sample_id}.combined.bw"), emit: combined_bw
+    tuple val(sample_id),
+         path("${sample_id}.hap1.bed.gz"), 
+         path("${sample_id}.hap1.bed.gz.tbi"), emit: hap1_bed
+    tuple val(sample_id),
+            path("${sample_id}.hap2.bed.gz"),
+            path("${sample_id}.hap2.bed.gz.tbi"), emit: hap2_bed
+    tuple val(sample_id),
+            path("${sample_id}.combined.bw"), emit: combined_bw
+    tuple val(sample_id),
+            path("${sample_id}.hap1.bw"), emit: hap1_bw
+    tuple val(sample_id),
+            path("${sample_id}.hap2.bw"), emit: hap2_bw
 
     script:
     """
@@ -225,18 +236,16 @@ process sawfish_joint_call {
     """
 }
 
+
+
+
 process hiphase_small_variants {
     /* hiphase small variants only */
     tag "$sample_id"
     
-    errorStrategy 'retry'
-    maxRetries 2
     
-    cpus { 8 * task.attempt } 
-    memory { 32.GB * task.attempt }
 
-    // Using a dynamic path or relying on a config file is best, 
-    // but this works if params.hiphase_output_dir is defined in main.nf
+    
     publishDir "${params.hiphase_output_dir}/${sample_id}", mode: 'copy', overwrite: true
     
     container "quay.io/pacbio/hiphase:1.5.0_build1"
