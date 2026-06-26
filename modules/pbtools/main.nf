@@ -53,7 +53,6 @@ process pbmm2_align_region {
 
 
 process pbmm2_align {
-    label 'high_memory'
     publishDir "${params.aligned_output_dir}/${sample_id}", mode: 'copy', overwrite: true
     tag "$sample_id"
     container "quay.io/pacbio/pbmm2:1.17.0_build1"
