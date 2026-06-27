@@ -2,14 +2,17 @@
 
 ## Main Features
 - Read alignment using `pbmm2` with support for targeted regions.
-- Variant calling using `DeepVariant` with support for targeted regions.
-- Phasing of small variants using `Hiphase`.
-- Variant annotation using `Ensembl VEP`.
+- Variant calling using `DeepVariant`.
+- Read backed phasing of small variants using `Hiphase`.
+- SV calling with ```sawfish2```
+- 5mC calling with ```pb-cpg-tools```
+
 
 ## Requirements
 - [Nextflow](https://www.nextflow.io/) 
 - [Docker](https://www.docker.com/) or [Singularity](https://sylabs.io/docs/) for containerized execution
 - Sufficient computational resources for processing HiFi reads
+- Recommend running on Seqera Platform
 
 ## Usage
 1. Clone the repository:
@@ -24,10 +27,7 @@
    nextflow run main.nf -c nextflow.config
    ```  
 
-There are two entry points available:
-- `-entry ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1`: For alignment, DeepVariant variant calling in SYT1 region, phasing, and VEP annotation.
-This is the default entry point.
-- `-entry HIPHASE_VEP_ONLY`: for phasing and VEP annotation only on pre-called variants and BAM files.
+
 
 
 The input samplesheet should be formatted as follows:
