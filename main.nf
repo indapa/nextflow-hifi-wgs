@@ -3,7 +3,7 @@
 nextflow.enable.dsl=2
 
 include { pbmm2_align; cpg_methylation_calling; sawfish_discover; sawfish_joint_call; hiphase_small_variants } from './modules/pbtools'
-include { glnexus_trio_merge; deepvariant_wgs } from './modules/deepvariant'
+include { glnexus_trio_merge; deeptrio_wgs } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
 include { whatshap_trio_phase } from './modules/whatshap'
@@ -93,14 +93,11 @@ workflow WGS_TRIO {
         }
         .unique()
 
-    /* read alignment */
-    pbmm2_align(
-        file(params.reference),
-        flat_bams_ch,
-    )
+
+   
 
     // 3. Run Alignment
-    pbmm2_align(params.reference, flat_bams_ch)
+    pbmm2_align(file(params.reference), flat_bams_ch)
 
     // pbmm2_align.out.aligned_bam emits: [ sample_id, aligned_bam, aligned_bai ]
     aligned_bams_ch = pbmm2_align.out.aligned_bam
@@ -179,8 +176,8 @@ workflow WGS_TRIO {
     // 3. Run HiPhase for parents (Arguments must match input declaration order)
     hiphase_small_variants(
         hiphase_input_ch,        // 1st input: tuple
-        params.reference,        // 2nd input: path reference
-        params.reference_index   // 3rd input: path reference_index
+        file(params.reference),        // 2nd input: path reference
+        file(params.reference_index)   // 3rd input: path reference_index
     )
 
     // --- Prepare Child Haplotagged BAM ---
@@ -196,11 +193,9 @@ workflow WGS_TRIO {
     
     // Run samtools index on the child bam
     samtools_index(child_bam_ch)
-    child_cpg_input = samtools_index(child_bam_ch).out
-
+    child_cpg_input = samtools_index.out
     // --- Prepare Parents Haplotagged BAM ---
     // hiphase_small_variants.out.haplotagged_bam already matches: [sample_id, bam, bai]
-    parent_cpg_input = hiphase_small_variants.out.haplotagged_bam
 
     // --- Combine All Family Members Together ---
     all_haplotagged_bams_ch = child_cpg_input.mix(parent_cpg_input)
@@ -208,8 +203,8 @@ workflow WGS_TRIO {
     // --- Run CpG Methylation Calling ---
     cpg_methylation_calling(
         all_haplotagged_bams_ch,
-        params.reference,
-        params.reference_index
+        file(params.reference),
+        file(params.reference_index)
     )
 
     mosdepth_run(all_haplotagged_bams_ch)

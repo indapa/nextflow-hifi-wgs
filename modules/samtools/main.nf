@@ -55,4 +55,9 @@ process samtools_index{
     """
     samtools index ${bam}
     """
+
+    stub:
+    """
+    touch ${bam}.bai    
+    """
 }
