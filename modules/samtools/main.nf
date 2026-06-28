@@ -41,3 +41,23 @@ process bam_stats {
 
 
 
+process samtools_index{
+    tag "$sample_id"
+    container "quay.io/biocontainers/samtools:1.19.2--h50ea8bc_0" // or any container with samtools
+
+    input:
+    tuple val(sample_id), path(bam)
+
+    output:
+    tuple val(sample_id), path(bam), path("${bam}.bai")
+
+    script:
+    """
+    samtools index ${bam}
+    """
+
+    stub:
+    """
+    touch ${bam}.bai    
+    """
+}
