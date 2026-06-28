@@ -229,7 +229,7 @@ workflow WGS_TRIO {
 
     sawfish_in_ch = aligned_bams_ch.join(expected_bed_ch, by: 0)
 
-    awfish_discover(
+    sawfish_discover(
         sawfish_in_ch,
         file(params.excluded_bed),
         file(params.reference),
