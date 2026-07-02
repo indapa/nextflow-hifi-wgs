@@ -1,15 +1,17 @@
 [Nextflow](https://www.nextflow.io/) secondary analysis pipeline for the analysis of [PacBio HiFi reads](https://downloads.pacbcloud.com/public/revio/2022Q4/?utm_source=Website&utm_medium=webpage&utm_term=HomoSapiens-GIAB-trio-HG002-4&utm_content=datasets&utm_campaign=0000-Website-Leads). 
 
 ## Main Features
-- Read alignment using `pbmm2` with support for targeted regions.
-- Variant calling using `DeepVariant` with support for targeted regions.
-- Phasing of small variants using `Hiphase`.
-- Variant annotation using `Ensembl VEP`.
+- Read alignment using `pbmm2`.
+- Variant calling using `DeepVariant`.
+- Read backed phasing of small variants using `Hiphase`.
+- SV calling with ```sawfish2```
+- 5mC calling with ```pb-cpg-tools```
+
 
 ## Requirements
 - [Nextflow](https://www.nextflow.io/) 
 - [Docker](https://www.docker.com/) or [Singularity](https://sylabs.io/docs/) for containerized execution
-- Sufficient computational resources for processing HiFi reads
+- Recommend running on Seqera Platform
 
 ## Usage
 1. Clone the repository:
@@ -24,10 +26,7 @@
    nextflow run main.nf -c nextflow.config
    ```  
 
-There are two entry points available:
-- `-entry ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1`: For alignment, DeepVariant variant calling in SYT1 region, phasing, and VEP annotation.
-This is the default entry point.
-- `-entry HIPHASE_VEP_ONLY`: for phasing and VEP annotation only on pre-called variants and BAM files.
+
 
 
 The input samplesheet should be formatted as follows:
@@ -68,22 +67,9 @@ The pipeline can be configured using the `nextflow.config` file. You can specify
 
 ## Modules
 The pipeline is modular, with separate modules for each major step:
-- `pbtools`: For read alignment using `pbmm2`and phasing using `hiphase`.
-- `deepvariant`: For variant calling using `DeepVariant`.
-- `samtools`: For BAM file statistics.
-- `ensemblvep`: For variant annotation using `Ensembl VEP`.
+- `pbtools`: PacBio secondary analysis tools.
+- `deepvariant`: DNA small variant calling using `DeepVariant`.
+- `samtools`: For BAM file processing.
 
 
-## Example
 
-Witht the current configuration, the pipeline will align reads to the specified reference genome, call variants in the targeted SYT1 region, phase the variants, and annotate them using VEP.
-
-```
-nextflow run main.nf -entry ALIGN_DEEP_VARIANT_HIPHASE_VEP_SYT1 
-```
-
-For running only the phasing and VEP annotation steps:
-
-```
-nextflow run main.nf -entry HIPHASE_VEP_ONLY --hiphase_samplesheet path/to/hiphase_samplesheet.csv
-```
