@@ -83,7 +83,7 @@ process infer_sex {
 
     stub:
     """
-    touch ${sample_id}_inferred_sex.csv
+    echo "MALE" > ${sample_id}_inferred_sex.csv
     touch ${sample_id}_mean_depth.txt
     """
 }
