@@ -184,8 +184,6 @@ workflow WGS_TRIO {
     // whatshap_trio_phase outputs: child_id via deeptrio_input_ch
     // We map whatshap's output back to its child_id using a join or map.
     // The easiest way is to extract child_id from trio_bams_ch or deeptrio_input_ch:
-    child_id_ch = trio_bams_ch.map { fam, child_id, c_b, p1_id, p1_b, p2_id, p2_b -> tuple(fam, child_id) }
-    
     child_bam_ch = whatshap_trio_phase.out.haplotagged_bam
         // whatshap outputs a single file, so we pair it with its family ID via channel matching or join
         // Since whatshap_trio_phase.out.phased_vcf has [family_id, vcf], we can use that to track family context:
@@ -196,6 +194,7 @@ workflow WGS_TRIO {
     child_cpg_input = samtools_index.out
     // --- Prepare Parents Haplotagged BAM ---
     // hiphase_small_variants.out.haplotagged_bam already matches: [sample_id, bam, bai]
+    parent_cpg_input = hiphase_small_variants.out.haplotagged_bam
 
     // --- Combine All Family Members Together ---
     all_haplotagged_bams_ch = child_cpg_input.mix(parent_cpg_input)
