@@ -79,13 +79,13 @@ process deepvariant_targeted_region {
 
 }
 
-process deeptrio_targeted_region {
-    label 'high_memory'
+process deeptrio_wgs {
+    
     tag "${family_id}"
     publishDir "${params.deepvariant_output_dir}/DV_trio/${family_id}", mode: 'copy', overwrite: true
     
     // DeepTrio is included in the standard DeepVariant container
-    container "google/deepvariant:deeptrio-1.8.0"
+    container "google/deepvariant:deeptrio-1.10.0"
     
     input:
         path ref            // Reference genome
@@ -97,8 +97,7 @@ process deeptrio_targeted_region {
               val(p1_id),    path(p1_bam),    path(p1_bai), \
               val(p2_id),    path(p2_bam),    path(p2_bai)
 
-        val threads                 // Number of shards
-        val target_region_string    // Target e.g. "chr20:1000000-2000000"
+        
         
     output:
        
@@ -115,10 +114,8 @@ process deeptrio_targeted_region {
         tuple val(family_id), val(p2_id), path("${p2_id}.g.vcf.gz"), path("${p2_id}.g.vcf.gz.tbi"), emit: p2_gvcf
 
     script:
-    def regions_flag = target_region_string ? "--regions \"${target_region_string}\"" : ""
     
     """
-    mkdir -p intermediate_results_dir
 
     /opt/deepvariant/bin/deeptrio/run_deeptrio \
         --model_type PACBIO \
@@ -135,8 +132,8 @@ process deeptrio_targeted_region {
         --output_gvcf_child ${child_id}.g.vcf.gz \
         --output_gvcf_parent1 ${p1_id}.g.vcf.gz \
         --output_gvcf_parent2 ${p2_id}.g.vcf.gz \
-        --num_shards ${threads} \
-        ${regions_flag}
+        --num_shards ${task.cpus} 
+        
     """
 
     stub:
@@ -149,7 +146,6 @@ process deeptrio_targeted_region {
 
 process glnexus_trio_merge {
     tag "${family_id}"
-    label 'high_memory' // GLnexus can use significant RAM
     publishDir "${params.deepvariant_output_dir}/DV_trio/${family_id}"
     
     // Using the container you requested (contains glnexus_cli, bcftools, bgzip)
