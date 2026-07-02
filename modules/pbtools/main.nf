@@ -287,6 +287,7 @@ process hiphase_small_variants {
     """
 
     stub:
+    def basename = vcf.simpleName
     """
     touch ${basename}.phased.vcf.gz
     touch ${basename}.phased.vcf.gz.tbi
