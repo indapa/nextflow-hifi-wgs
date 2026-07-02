@@ -49,9 +49,16 @@ process whatshap_trio_phase {
     #haplotag
     tabix -p vcf ${family_id}.trio_phased.vcf.gz
     whatshap haplotag -o ${child_id}.haplotagged.bam --reference ${reference} ${family_id}.trio_phased.vcf.gz ${child_bam}
+    """
 
-
-    
-
+    stub:
+    """
+    touch ${family_id}.trio_phased.vcf.gz
+    touch ${family_id}.trio_phased.vcf.gz.tbi
+    touch ${child_id}.haplotagged.bam
+    touch ${child_id}.haplotagged.bam.bai
+    touch ${family_id}.ped
+    touch ${family_id}.blocks.tsv
+    touch ${family_id}.gtf
     """
 }
