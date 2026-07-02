@@ -146,7 +146,7 @@ process deeptrio_wgs {
 
 process glnexus_trio_merge {
     tag "${family_id}"
-    publishDir "${params.deepvariant_output_dir}/DV_trio/${family_id}"
+    publishDir "${params.deepvariant_output_dir}/DV_trio/${family_id}", mode: 'copy', overwrite: true
     
     // Using the container you requested (contains glnexus_cli, bcftools, bgzip)
     container "quay.io/mlin/glnexus:v1.2.7"
@@ -178,6 +178,12 @@ process glnexus_trio_merge {
 
     # 2. Index the resulting VCF
     tabix -p vcf ${family_id}.joint.vcf.gz
+    """
+
+    stub:
+    """
+    touch ${family_id}.joint.vcf.gz
+    touch ${family_id}.joint.vcf.gz.tbi
     """
 }
 

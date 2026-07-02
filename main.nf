@@ -5,7 +5,6 @@ nextflow.enable.dsl=2
 include { pbmm2_align; cpg_methylation_calling; sawfish_discover; sawfish_joint_call; hiphase_small_variants } from './modules/pbtools'
 include { glnexus_trio_merge; deeptrio_wgs; deepvariant_wgs } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
-include { annotate_vep } from './modules/ensemblvep'
 include { whatshap_trio_phase } from './modules/whatshap'
 include { mosdepth_run; infer_sex; plot_dist_coverage } from './modules/mosdepth'
 include { samtools_index } from './modules/samtools'

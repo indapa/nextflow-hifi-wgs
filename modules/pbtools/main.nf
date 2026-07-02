@@ -160,6 +160,12 @@ process cpg_methylation_calling {
     touch ${sample_id}.combined.bed.gz
     touch ${sample_id}.combined.bed.gz.tbi
     touch ${sample_id}.combined.bw
+    touch ${sample_id}.hap1.bed.gz
+    touch ${sample_id}.hap1.bed.gz.tbi
+    touch ${sample_id}.hap1.bw
+    touch ${sample_id}.hap2.bed.gz
+    touch ${sample_id}.hap2.bed.gz.tbi
+    touch ${sample_id}.hap2.bw  
     """
 }
 
@@ -278,6 +284,17 @@ process hiphase_small_variants {
 
     bcftools index -f --tbi ${basename}.phased.vcf.gz
     samtools index ${basename}.haplotagged.bam
+    """
+
+    stub:
+    """
+    touch ${basename}.phased.vcf.gz
+    touch ${basename}.phased.vcf.gz.tbi
+    touch ${basename}.haplotagged.bam
+    touch ${basename}.haplotagged.bam.bai
+    touch ${basename}.stats.csv
+    touch ${basename}.blocks.tsv
+    touch ${basename}.summary.tsv
     """
 }
 
