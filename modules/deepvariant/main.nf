@@ -85,7 +85,7 @@ process deeptrio_wgs {
     publishDir "${params.deepvariant_output_dir}/DV_trio/${family_id}", mode: 'copy', overwrite: true
     
     // DeepTrio is included in the standard DeepVariant container
-    container "google/deepvariant:deeptrio-1.8.0"
+    container "google/deepvariant:deeptrio-1.10.0"
     
     input:
         path ref            // Reference genome

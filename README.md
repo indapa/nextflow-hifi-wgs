@@ -49,6 +49,12 @@ sample2,/path/to/sample2.vcf,/path/to/sample2.vcf.tbi,/path/to/sample2.bam,/path
 ```
 The bam and bai files should point to aligned HiFi reads in BAM format. The vcf and vcf_tbi files should point to variant calls in VCF format from DeepVariant along with their index files.
 
+For trio samplesheet:
+Needs to be in wide format
+```
+child_id,parent1_id,parent2_id,child_bam,parent1_bam,parent2_bam
+```
+
 4. Monitor the progress and check the output files in the specified output directory.
 
 ## Configuration

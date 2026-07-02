@@ -3,7 +3,7 @@
 nextflow.enable.dsl=2
 
 include { pbmm2_align; cpg_methylation_calling; sawfish_discover; sawfish_joint_call; hiphase_small_variants } from './modules/pbtools'
-include { glnexus_trio_merge; deeptrio_wgs } from './modules/deepvariant'
+include { glnexus_trio_merge; deeptrio_wgs; deepvariant_wgs } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { annotate_vep } from './modules/ensemblvep'
 include { whatshap_trio_phase } from './modules/whatshap'
@@ -21,7 +21,7 @@ workflow {
         Available workflows:
         1. DEFAULT: nextflow run main.nf --samplesheet samples.csv performs read alignment and post-alignment analyses (e.g., bam stats)
         2. POST_ALIGNMENT_ONLY: nextflow run main.nf -entry POST_ALIGNMENT_ONLY --samplesheet samples.csv runs post-alignment only on pre-aligned BAMs
-        3. RUN_DEEPTRIO: nextflow run main.nf -entry RUN_DEEPTRIO --trio_samplesheet trios.csv performs DeepTrio and WhatsHap phasing on
+        3. WGS_TRIO: nextflow run main.nf -entry WGS_TRIO --trio_samplesheet trios.csv performs DeepTrio and WhatsHap phasing on
         trios in the samplesheet with aligned bams
         """.stripIndent()
         exit 0
@@ -154,8 +154,8 @@ workflow WGS_TRIO {
 
     // Run Whatshap Phase
     whatshap_trio_phase(
-        params.reference, 
-        params.reference_index, 
+        file(params.reference), 
+        file(params.reference_index), 
         whatshap_input_ch
     )
 
