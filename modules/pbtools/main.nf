@@ -183,7 +183,7 @@ process sawfish_discover {
    
        
     output:
-    path "${sample_id}_sawfish_discover", emit: discover_dir
+    path "${sample_id}_sawfish_discover", type:'dir', emit: discover_dir
         
     script:
     """
@@ -217,7 +217,7 @@ process sawfish_joint_call {
    
 
     output:
-    path "sawfish_joint_call_dir", emit: joint_dir
+    path "sawfish_joint_call_dir", type:'dir', emit: joint_dir
 
     script:
     // Groovy magic: transform the list [dir1, dir2, dir3] 
