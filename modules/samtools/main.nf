@@ -6,8 +6,7 @@ process downsample {
 
     tag "${sample_id}"
 
-    publishDir "${params.downsample_output_dir}/${sample_id}", mode: 'copy', overwrite: true
-
+    publishDir { "${params.downsample_output_dir}/${sample_id}" }, mode: 'copy', overwrite: true
     container 'community.wave.seqera.io/library/samtools:1.21--0d76da7c3cf7751c'
 
     input:
