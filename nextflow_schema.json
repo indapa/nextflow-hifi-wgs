@@ -31,6 +31,10 @@
             "type": "string",
             "default": "s3://embedbio-results/hifi-wgs-output/aligned-bams"
         },
+        "downsample_output_dir": {
+            "type": "string",
+            "default": "s3://embedbio-results/hifi-wgs-output/downsampled-bams"
+        },
         "bam_stats_output_dir": {
             "type": "string",
             "default": "s3://embedbio-results/hifi-wgs-output/bamstats"
