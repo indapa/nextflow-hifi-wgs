@@ -1,7 +1,7 @@
 
 process downsample {
 
-    cpus 2
+    cpus 4
     memory '4 GB'
 
     tag "${sample_id}"
@@ -18,7 +18,7 @@ process downsample {
 
     script:
     """
-    samtools view -h -s 42.${frac} -b -@ 2  -o ${sample_id}.${coverage}x.bam  ${bam}
+    samtools view -h -s 42.${frac} -b -@ ${task.cpus} -o ${sample_id}.${coverage}x.bam  ${bam}
     """
 
     stub:
@@ -53,7 +53,7 @@ process bam_stats {
     script:
     """
 
-    samtools stats --threads 2 ${bam} > ${bam}.stats
+    samtools stats --threads ${task.cpus} ${bam} > ${bam}.stats
 
     """
 

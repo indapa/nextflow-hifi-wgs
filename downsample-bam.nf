@@ -9,7 +9,7 @@ params.input        = ''
 params.output = ''
 
 // Parameter validation
-def required_params = ['input', 'output']
+def required_params = ['samplesheet', 'output']
 for (param in required_params) {
     if (!params[param]) {
         error "Parameter '$param' is required!"
@@ -18,7 +18,7 @@ for (param in required_params) {
 
 //uple val(sample_id), val(coverage), val(frac), path(bam)
 // Channels
-input_ch = Channel.fromPath(file(params.input, checkIfExists: true))
+input_ch = Channel.fromPath(file(params.samplesheet, checkIfExists: true))
     .splitCsv(header: true)
     .map { row ->
         tuple(row.sample_id, row.coverage, row.frac, file(row.bam, checkIfExists: true))
