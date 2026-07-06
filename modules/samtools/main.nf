@@ -35,9 +35,9 @@ process bam_stats {
     cpus 2
     memory '2 GB'
 
-    tag "${sample_id}"
+    tag { "${sample_id}" }
 
-    publishDir "${params.bam_stats_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+    publishDir { "${params.bam_stats_output_dir}/${sample_id}" }, mode: 'copy', overwrite: true
 
     container 'community.wave.seqera.io/library/samtools:1.21--0d76da7c3cf7751c'
 
@@ -67,7 +67,7 @@ process bam_stats {
 
 
 process samtools_index{
-    tag "$sample_id"
+    tag { "${sample_id}" }
     container "quay.io/biocontainers/samtools:1.19.2--h50ea8bc_0" // or any container with samtools
 
     input:
