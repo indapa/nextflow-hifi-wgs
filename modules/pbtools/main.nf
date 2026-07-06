@@ -1,8 +1,8 @@
 
 
 process pbmm2_align {
-    publishDir "${params.aligned_output_dir}/${sample_id}", mode: 'copy', overwrite: true
-    tag "$sample_id"
+    publishDir { "${params.aligned_output_dir}/${sample_id}" }, mode: 'copy', overwrite: true
+    tag { "${sample_id}" }
     container "quay.io/pacbio/pbmm2:1.17.0_build1"
 
     input:
@@ -63,8 +63,8 @@ process cpg_methylation_calling {
      */
 
    
-    tag "$sample_id"
-    publishDir "${((params.cpg_output_dir ?: '').toString().trim()) ? "${params.cpg_output_dir}/${sample_id}" : error("Missing required parameter: --cpg_output_dir. Set params.cpg_output_dir in nextflow.config or pass --cpg_output_dir on the command line.")}", mode: 'copy', overwrite: true
+    tag { "${sample_id}" }
+    publishDir { "${((params.cpg_output_dir ?: '').toString().trim()) ? "${params.cpg_output_dir}/${sample_id}" : error("Missing required parameter: --cpg_output_dir. Set params.cpg_output_dir in nextflow.config or pass --cpg_output_dir on the command line.")}" }, mode: 'copy', overwrite: true
 
     container "quay.io/pacbio/pb-cpg-tools:3.0.0_build1"
 
@@ -120,7 +120,7 @@ process cpg_methylation_calling {
 
 process sawfish_discover {
     
-    tag "$sample_id"
+    tag { "${sample_id}" }
     container "quay.io/pacbio/sawfish:2.2.1_build1"
     
     input:
@@ -156,7 +156,7 @@ process sawfish_discover {
 
 process sawfish_joint_call {
     
-    publishDir "${params.sawfish_output_dir}/joint_call", mode: 'copy'
+    publishDir { "${params.sawfish_output_dir}/joint_call" }, mode: 'copy'
     container "quay.io/pacbio/sawfish:2.2.1_build1"
 
     input:
@@ -194,12 +194,12 @@ process sawfish_joint_call {
 
 process hiphase_small_variants {
     /* hiphase small variants only */
-    tag "$sample_id"
+    tag { "${sample_id}" }
     
     
 
     
-    publishDir "${params.hiphase_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+    publishDir { "${params.hiphase_output_dir}/${sample_id}" }, mode: 'copy', overwrite: true
     
     container "quay.io/pacbio/hiphase:1.5.0_build1"
 

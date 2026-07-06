@@ -1,6 +1,6 @@
 process whatshap_trio_phase {
-    tag "${family_id}"
-    publishDir "${params.deepvariant_output_dir}/DV_trio/${family_id}", mode: 'copy', overwrite: true
+    tag { "${family_id}" }
+    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
     container "indapa/whatshap-tabix"
 
     input:

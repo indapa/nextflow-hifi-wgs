@@ -1,7 +1,7 @@
 process bcftools_deepvariant_norm {
     label 'process_medium'
-    tag "${sample_id}"
-    publishDir "${params.deepvariant_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+    tag { "${sample_id}" }
+    publishDir { "${params.deepvariant_output_dir}/${sample_id}" }, mode: 'copy', overwrite: true
     
     container "quay.io/biocontainers/bcftools:1.17--haef29d1_0"
     
@@ -35,8 +35,8 @@ process bcftools_deepvariant_norm {
 
 process deepvariant_targeted_region {
     label 'high_memory'
-    tag "${sample_id}"
-    publishDir "${params.deepvariant_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+    tag { "${sample_id}" }
+    publishDir { "${params.deepvariant_output_dir}/${sample_id}" }, mode: 'copy', overwrite: true
     
     container "google/deepvariant:1.8.0"
     
@@ -80,9 +80,8 @@ process deepvariant_targeted_region {
 }
 
 process deeptrio_wgs {
-    
-    tag "${family_id}"
-    publishDir "${params.deepvariant_output_dir}/DV_trio/${family_id}", mode: 'copy', overwrite: true
+    tag { "${family_id}" }
+    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
     
     // DeepTrio is included in the standard DeepVariant container
     container "google/deepvariant:deeptrio-1.10.0"
@@ -145,8 +144,8 @@ process deeptrio_wgs {
 }
 
 process glnexus_trio_merge {
-    tag "${family_id}"
-    publishDir "${params.deepvariant_output_dir}/DV_trio/${family_id}", mode: 'copy', overwrite: true
+    tag { "${family_id}" }
+    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
     
     // Using the container you requested (contains glnexus_cli, bcftools, bgzip)
     container "quay.io/mlin/glnexus:v1.2.7"
@@ -190,8 +189,8 @@ process glnexus_trio_merge {
 
 process deepvariant_wgs {
     
-    tag "$sample_id"
-    publishDir "${params.deepvariant_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+    tag { "${sample_id}" }
+    publishDir { "${params.deepvariant_output_dir}/${sample_id}" }, mode: 'copy', overwrite: true
     
     container "google/deepvariant:1.10.0"
 
