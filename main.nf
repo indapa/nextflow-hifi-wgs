@@ -191,16 +191,16 @@ workflow WGS_TRIO {
 
     // Tag merged VCFs with roles
     merged_vcf_with_role = bcftools_concat_deeptrio_vcfs.out.merged_vcf
-        .map { fam, sample_id, vcf, tbi -> tuple([fam, sample_id].toString(), fam, sample_id, vcf, tbi) }
+        .map { fam, sample_id, vcf, tbi -> tuple([fam, sample_id], fam, sample_id, vcf, tbi) }
         .join(
-            trio_roles_ch.map { fam, sample_id, role -> tuple([fam, sample_id].toString(), role) }
+            trio_roles_ch.map { fam, sample_id, role -> tuple([fam, sample_id], role) }
         )
         .map { key, fam, sample_id, vcf, tbi, role -> tuple(fam, sample_id, vcf, tbi, role) }
 
     merged_gvcf_with_role = bcftools_concat_deeptrio_gvcfs.out.merged_gvcf
-        .map { fam, sample_id, gvcf, tbi -> tuple([fam, sample_id].toString(), fam, sample_id, gvcf, tbi) }
+        .map { fam, sample_id, gvcf, tbi -> tuple([fam, sample_id], fam, sample_id, gvcf, tbi) }
         .join(
-            trio_roles_ch.map { fam, sample_id, role -> tuple([fam, sample_id].toString(), role) }
+            trio_roles_ch.map { fam, sample_id, role -> tuple([fam, sample_id], role) }
         )
         .map { key, fam, sample_id, gvcf, tbi, role -> tuple(fam, sample_id, gvcf, tbi, role) }
 

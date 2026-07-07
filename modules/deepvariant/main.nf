@@ -167,9 +167,10 @@ process deeptrio_wgs_by_chrom {
         tuple val(family_id), val(p2_id), val(chrom), path("${p2_id}.${chrom}.g.vcf.gz"), path("${p2_id}.${chrom}.g.vcf.gz.tbi"), emit: p2_gvcf
 
     script:
+    def model_type = task.ext.model_type ?: 'PACBIO'
     """
     /opt/deepvariant/bin/deeptrio/run_deeptrio \
-        --model_type PACBIO \
+        --model_type ${model_type} \
         --ref ${ref} \
         --reads_child ${child_bam} \
         --reads_parent1 ${p1_bam} \
