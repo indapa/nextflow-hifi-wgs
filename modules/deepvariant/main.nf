@@ -143,6 +143,142 @@ process deeptrio_wgs {
     """
 }
 
+process deeptrio_wgs_by_chrom {
+    tag { "${family_id}_${chrom}" }
+    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}/by_chrom" }, mode: 'copy', overwrite: true
+
+    container "google/deepvariant:deeptrio-1.10.0"
+
+    input:
+        path ref
+        path ref_index
+        tuple val(family_id), \
+              val(child_id), path(child_bam), path(child_bai), \
+              val(p1_id),    path(p1_bam),    path(p1_bai), \
+              val(p2_id),    path(p2_bam),    path(p2_bai)
+        val(chrom)
+
+    output:
+        tuple val(family_id), val(child_id), val(chrom), path("${child_id}.${chrom}.vcf.gz"), path("${child_id}.${chrom}.vcf.gz.tbi"), emit: child_vcf
+        tuple val(family_id), val(child_id), val(chrom), path("${child_id}.${chrom}.g.vcf.gz"), path("${child_id}.${chrom}.g.vcf.gz.tbi"), emit: child_gvcf
+        tuple val(family_id), val(p1_id), val(chrom), path("${p1_id}.${chrom}.vcf.gz"), path("${p1_id}.${chrom}.vcf.gz.tbi"), emit: p1_vcf
+        tuple val(family_id), val(p1_id), val(chrom), path("${p1_id}.${chrom}.g.vcf.gz"), path("${p1_id}.${chrom}.g.vcf.gz.tbi"), emit: p1_gvcf
+        tuple val(family_id), val(p2_id), val(chrom), path("${p2_id}.${chrom}.vcf.gz"), path("${p2_id}.${chrom}.vcf.gz.tbi"), emit: p2_vcf
+        tuple val(family_id), val(p2_id), val(chrom), path("${p2_id}.${chrom}.g.vcf.gz"), path("${p2_id}.${chrom}.g.vcf.gz.tbi"), emit: p2_gvcf
+
+    script:
+    def model_type = task.ext.model_type ?: 'PACBIO'
+    """
+    /opt/deepvariant/bin/deeptrio/run_deeptrio \
+        --model_type ${model_type} \
+        --ref ${ref} \
+        --reads_child ${child_bam} \
+        --reads_parent1 ${p1_bam} \
+        --reads_parent2 ${p2_bam} \
+        --sample_name_child "${child_id}" \
+        --sample_name_parent1 "${p1_id}" \
+        --sample_name_parent2 "${p2_id}" \
+        --output_vcf_child ${child_id}.${chrom}.vcf.gz \
+        --output_vcf_parent1 ${p1_id}.${chrom}.vcf.gz \
+        --output_vcf_parent2 ${p2_id}.${chrom}.vcf.gz \
+        --output_gvcf_child ${child_id}.${chrom}.g.vcf.gz \
+        --output_gvcf_parent1 ${p1_id}.${chrom}.g.vcf.gz \
+        --output_gvcf_parent2 ${p2_id}.${chrom}.g.vcf.gz \
+        --num_shards ${task.cpus} \
+        --regions ${chrom}
+    """
+
+    stub:
+    """
+    touch ${child_id}.${chrom}.vcf.gz ${child_id}.${chrom}.vcf.gz.tbi ${child_id}.${chrom}.g.vcf.gz ${child_id}.${chrom}.g.vcf.gz.tbi
+    touch ${p1_id}.${chrom}.vcf.gz ${p1_id}.${chrom}.vcf.gz.tbi ${p1_id}.${chrom}.g.vcf.gz ${p1_id}.${chrom}.g.vcf.gz.tbi
+    touch ${p2_id}.${chrom}.vcf.gz ${p2_id}.${chrom}.vcf.gz.tbi ${p2_id}.${chrom}.g.vcf.gz ${p2_id}.${chrom}.g.vcf.gz.tbi
+    """
+}
+
+
+process bcftools_concat_deeptrio_vcfs {
+    tag { "${sample_id}" }
+    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
+
+    container "quay.io/biocontainers/bcftools:1.21--h8b25389_1"
+
+    input:
+        tuple val(family_id), val(sample_id), path(vcfs), path(tbis)
+
+    output:
+        tuple val(family_id), val(sample_id), path("${sample_id}.vcf.gz"), path("${sample_id}.vcf.gz.tbi"), emit: merged_vcf
+
+    script:
+    """
+    # Build file list in genomic chromosome order
+    # Filenames follow the pattern: {sample_id}.{chrom}.vcf.gz
+    for chrom in chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 \
+                 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 \
+                 chr21 chr22 chrX chrY; do
+        if [ -f "${sample_id}.\${chrom}.vcf.gz" ]; then
+            echo "${sample_id}.\${chrom}.vcf.gz" >> vcf_list.txt
+        fi
+    done
+
+    bcftools concat \
+        --allow-overlaps \
+        --file-list vcf_list.txt \
+        -Oz \
+        -o ${sample_id}.vcf.gz
+
+    bcftools index -t ${sample_id}.vcf.gz
+    """
+
+    stub:
+    """
+    touch ${sample_id}.vcf.gz
+    touch ${sample_id}.vcf.gz.tbi
+    """
+}
+
+
+process bcftools_concat_deeptrio_gvcfs {
+    tag { "${sample_id}" }
+    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
+
+    container "quay.io/biocontainers/bcftools:1.21--h8b25389_1"
+
+    input:
+        tuple val(family_id), val(sample_id), path(gvcfs), path(tbis)
+
+    output:
+        tuple val(family_id), val(sample_id), path("${sample_id}.g.vcf.gz"), path("${sample_id}.g.vcf.gz.tbi"), emit: merged_gvcf
+
+    script:
+    """
+    # Build file list in genomic chromosome order
+    # Filenames follow the pattern: {sample_id}.{chrom}.g.vcf.gz
+    for chrom in chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 \
+                 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 \
+                 chr21 chr22 chrX chrY; do
+        if [ -f "${sample_id}.\${chrom}.g.vcf.gz" ]; then
+            echo "${sample_id}.\${chrom}.g.vcf.gz" >> gvcf_list.txt
+        fi
+    done
+
+    bcftools concat \
+        --allow-overlaps \
+        --file-list gvcf_list.txt \
+        -Oz \
+        -o ${sample_id}.g.vcf.gz
+
+    bcftools index -t ${sample_id}.g.vcf.gz
+    """
+
+    stub:
+    """
+    touch ${sample_id}.g.vcf.gz
+    touch ${sample_id}.g.vcf.gz.tbi
+    """
+}
+
+
 process glnexus_trio_merge {
     tag { "${family_id}" }
     publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
