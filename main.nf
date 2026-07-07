@@ -105,8 +105,8 @@ workflow WGS_TRIO {
     // Using .collect() + .map() makes it a value channel that can be reused
     aligned_bams_map_ch = aligned_bams_ch
         .map { sample_id, bam, bai -> tuple(sample_id, [bam, bai]) }
-        .collect()
-        .map { items -> items.collectEntries { id, files -> [(id): files] } }
+        .toList()
+        .map { items -> items.collectEntries { item -> [(item[0]): item[1]] } }
 
     // Resolve trio BAM paths in one pass (no triple-join needed)
     deeptrio_input_ch = trio_bams_ch
