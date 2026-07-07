@@ -101,45 +101,37 @@ workflow WGS_TRIO {
     // pbmm2_align.out.aligned_bam emits: [ sample_id, aligned_bam, aligned_bai ]
     aligned_bams_ch = pbmm2_align.out.aligned_bam
 
-    // 4. Reconstruct the Trio structure using cross-referencing joins
-    // We join the original trio channel sequentially on child, parent1, and parent2 IDs
+    // Collect all aligned BAMs into a value channel (map of sample_id -> [bam, bai])
+    // Using .collect() + .map() makes it a value channel that can be reused
+    aligned_bams_map_ch = aligned_bams_ch
+        .map { sample_id, bam, bai -> tuple(sample_id, [bam, bai]) }
+        .collect()
+        .map { items -> items.collectEntries { id, files -> [(id): files] } }
+
+    // Resolve trio BAM paths in one pass (no triple-join needed)
     deeptrio_input_ch = trio_bams_ch
-        // Join for Child: matches trio_bams_ch(child_id) with aligned_bams_ch(sample_id)
-        .map { fam, c_id, c_b, p1_id, p1_b, p2_id, p2_b -> tuple(c_id, fam, p1_id, p1_b, p2_id, p2_b) }
-        .join(aligned_bams_ch) // yields: [ c_id, fam, p1_id, p1_b, p2_id, p2_b, c_bam, c_bai ]
-        
-        // Join for Parent 1
-        .map { c_id, fam, p1_id, p1_b, p2_id, p2_b, c_bam, c_bai -> tuple(p1_id, fam, c_id, c_bam, c_bai, p2_id, p2_b) }
-        .join(aligned_bams_ch) // yields: [ p1_id, fam, c_id, c_bam, c_bai, p2_id, p2_b, p1_bam, p1_bai ]
-        
-        // Join for Parent 2
-        .map { p1_id, fam, c_id, c_bam, c_bai, p2_id, p2_b, p1_bam, p1_bai -> tuple(p2_id, fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai) }
-        .join(aligned_bams_ch) // yields: [ p2_id, fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_bam, p2_bai ]
-        
-        // Final map to restore your exact process input order
-        .map { p2_id, fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_bam, p2_bai ->
+        .combine(aligned_bams_map_ch)
+        .map { fam, c_id, c_b, p1_id, p1_b, p2_id, p2_b, bam_map ->
+            def (c_bam, c_bai) = bam_map[c_id]
+            def (p1_bam, p1_bai) = bam_map[p1_id]
+            def (p2_bam, p2_bai) = bam_map[p2_id]
             tuple(fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai)
         }
 
-    // 5. Run DeepTrio by chromosome (scatter-gather)
-    // Create a channel of chromosomes to scatter over
-    def chromosomes_ch = channel.of(
-        'chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6',
-        'chr7', 'chr8', 'chr9', 'chr10', 'chr11', 'chr12',
-        'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18',
-        'chr19', 'chr20', 'chr21', 'chr22', 'chrX', 'chrY'
+    // Chromosomes to scatter over
+    chromosomes_ch = channel.of(
+        'chr1','chr2','chr3','chr4','chr5','chr6',
+        'chr7','chr8','chr9','chr10','chr11','chr12',
+        'chr13','chr14','chr15','chr16','chr17','chr18',
+        'chr19','chr20','chr21','chr22','chrX','chrY'
     )
 
-    // Scatter: combine each trio with each chromosome
-    deeptrio_scatter_ch = deeptrio_input_ch.combine(chromosomes_ch)
-
-    deeptrio_scatter_ch.into { deeptrio_trio_ch; deeptrio_chrom_ch }
-    // Run DeepTrio per chromosome
+    // Run DeepTrio — `each chrom` in the process handles the scatter automatically
     deeptrio_wgs_by_chrom(
         file(params.reference),
         file(params.reference_index),
-        deeptrio_trio_ch.map { trio, chrom -> trio },
-        deeptrio_chrom_ch.map { trio, chrom -> chrom }      // chrom
+        deeptrio_input_ch,
+        chromosomes_ch
     )
 
     // Gather: collect per-chromosome VCFs per sample and merge

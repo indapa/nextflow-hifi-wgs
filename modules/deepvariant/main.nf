@@ -156,7 +156,7 @@ process deeptrio_wgs_by_chrom {
               val(child_id), path(child_bam), path(child_bai), \
               val(p1_id),    path(p1_bam),    path(p1_bai), \
               val(p2_id),    path(p2_bam),    path(p2_bai)
-        val(chrom)
+        each chrom
 
     output:
         tuple val(family_id), val(child_id), val(chrom), path("${child_id}.${chrom}.vcf.gz"), path("${child_id}.${chrom}.vcf.gz.tbi"), emit: child_vcf
@@ -222,7 +222,7 @@ process bcftools_concat_deeptrio_vcfs {
     done
 
     bcftools concat \
-        --allow-overlaps \
+        --naive \
         --file-list vcf_list.txt \
         -Oz \
         -o ${sample_id}.vcf.gz
@@ -263,7 +263,7 @@ process bcftools_concat_deeptrio_gvcfs {
     done
 
     bcftools concat \
-        --allow-overlaps \
+        --naive \
         --file-list gvcf_list.txt \
         -Oz \
         -o ${sample_id}.g.vcf.gz
