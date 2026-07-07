@@ -3,7 +3,7 @@
 nextflow.enable.dsl=2
 
 include { pbmm2_align; cpg_methylation_calling; sawfish_discover; sawfish_joint_call; hiphase_small_variants } from './modules/pbtools'
-include { glnexus_trio_merge; deeptrio_wgs; deepvariant_wgs } from './modules/deepvariant'
+include { glnexus_trio_merge; deeptrio_wgs; deeptrio_wgs_by_chrom; bcftools_concat_deeptrio_vcfs; bcftools_concat_deeptrio_gvcfs; deepvariant_wgs } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { whatshap_trio_phase } from './modules/whatshap'
 include { mosdepth_run; infer_sex; plot_dist_coverage } from './modules/mosdepth'
@@ -121,19 +121,106 @@ workflow WGS_TRIO {
             tuple(fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai)
         }
 
-    // 5. Run DeepTrio
-    deeptrio_wgs(file(params.reference), file(params.reference_index), deeptrio_input_ch)
+    // 5. Run DeepTrio by chromosome (scatter-gather)
+    // Create a channel of chromosomes to scatter over
+    def chromosomes_ch = channel.of(
+        'chr1', 'chr2', 'chr3', 'chr4', 'chr5', 'chr6',
+        'chr7', 'chr8', 'chr9', 'chr10', 'chr11', 'chr12',
+        'chr13', 'chr14', 'chr15', 'chr16', 'chr17', 'chr18',
+        'chr19', 'chr20', 'chr21', 'chr22', 'chrX', 'chrY'
+    )
 
-    // GLNexus merge
-    // Reconstruct the merged input tuple grouped by family_id
-    glnexus_input_ch = deeptrio_wgs.out.child_gvcf
-        // Join Child with Parent 1 on family_id (the first element)
-        .join(deeptrio_wgs.out.p1_gvcf) 
-        // Current state: [fam, child_id, child_gvcf, child_tbi, p1_id, p1_gvcf, p1_tbi]
-        
-        // Join the result with Parent 2 on family_id
-        .join(deeptrio_wgs.out.p2_gvcf)
-        // Current state: [fam, child_id, child_gvcf, child_tbi, p1_id, p1_gvcf, p1_tbi, p2_id, p2_gvcf, p2_tbi]
+    // Scatter: combine each trio with each chromosome
+    deeptrio_scatter_ch = deeptrio_input_ch.combine(chromosomes_ch)
+    // Shape: [fam, child_id, child_bam, child_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai, chrom]
+
+    // Run DeepTrio per chromosome
+    deeptrio_wgs_by_chrom(
+        file(params.reference),
+        file(params.reference_index),
+        deeptrio_scatter_ch.map { it[0..9] },  // trio tuple
+        deeptrio_scatter_ch.map { it[10] }      // chrom
+    )
+
+    // Gather: collect per-chromosome VCFs per sample and merge
+    // Child VCFs: [family_id, child_id, chrom, vcf, tbi] -> group by [family_id, sample_id]
+    child_vcfs_grouped = deeptrio_wgs_by_chrom.out.child_vcf
+        .map { family_id, sample_id, chrom, vcf, tbi -> tuple(family_id, sample_id, vcf, tbi) }
+        .groupTuple(by: [0, 1], size: 24)
+
+    child_gvcfs_grouped = deeptrio_wgs_by_chrom.out.child_gvcf
+        .map { family_id, sample_id, chrom, gvcf, tbi -> tuple(family_id, sample_id, gvcf, tbi) }
+        .groupTuple(by: [0, 1], size: 24)
+
+    p1_vcfs_grouped = deeptrio_wgs_by_chrom.out.p1_vcf
+        .map { family_id, sample_id, chrom, vcf, tbi -> tuple(family_id, sample_id, vcf, tbi) }
+        .groupTuple(by: [0, 1], size: 24)
+
+    p1_gvcfs_grouped = deeptrio_wgs_by_chrom.out.p1_gvcf
+        .map { family_id, sample_id, chrom, gvcf, tbi -> tuple(family_id, sample_id, gvcf, tbi) }
+        .groupTuple(by: [0, 1], size: 24)
+
+    p2_vcfs_grouped = deeptrio_wgs_by_chrom.out.p2_vcf
+        .map { family_id, sample_id, chrom, vcf, tbi -> tuple(family_id, sample_id, vcf, tbi) }
+        .groupTuple(by: [0, 1], size: 24)
+
+    p2_gvcfs_grouped = deeptrio_wgs_by_chrom.out.p2_gvcf
+        .map { family_id, sample_id, chrom, gvcf, tbi -> tuple(family_id, sample_id, gvcf, tbi) }
+        .groupTuple(by: [0, 1], size: 24)
+
+    // Merge all per-sample VCFs (child + parents)
+    all_vcfs_to_merge = child_vcfs_grouped.mix(p1_vcfs_grouped, p2_vcfs_grouped)
+    all_gvcfs_to_merge = child_gvcfs_grouped.mix(p1_gvcfs_grouped, p2_gvcfs_grouped)
+
+    bcftools_concat_deeptrio_vcfs(all_vcfs_to_merge)
+    bcftools_concat_deeptrio_gvcfs(all_gvcfs_to_merge)
+
+    // Reconstruct family-level outputs for downstream (GLnexus, WhatsHap)
+    // merged_vcf emits: [family_id, sample_id, vcf, tbi]
+    // merged_gvcf emits: [family_id, sample_id, gvcf, tbi]
+
+    // Separate merged outputs back into child/parent channels using the trio metadata
+    // We need to rejoin with the original trio structure to identify roles
+    trio_roles_ch = deeptrio_input_ch.flatMap { fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai ->
+        [
+            tuple(fam, c_id, 'child'),
+            tuple(fam, p1_id, 'parent1'),
+            tuple(fam, p2_id, 'parent2')
+        ]
+    }
+
+    // Tag merged VCFs with roles
+    merged_vcf_with_role = bcftools_concat_deeptrio_vcfs.out.merged_vcf
+        .map { fam, sample_id, vcf, tbi -> tuple([fam, sample_id], fam, sample_id, vcf, tbi) }
+        .join(
+            trio_roles_ch.map { fam, sample_id, role -> tuple([fam, sample_id], role) }
+        )
+        .map { key, fam, sample_id, vcf, tbi, role -> tuple(fam, sample_id, vcf, tbi, role) }
+
+    merged_gvcf_with_role = bcftools_concat_deeptrio_gvcfs.out.merged_gvcf
+        .map { fam, sample_id, gvcf, tbi -> tuple([fam, sample_id], fam, sample_id, gvcf, tbi) }
+        .join(
+            trio_roles_ch.map { fam, sample_id, role -> tuple([fam, sample_id], role) }
+        )
+        .map { key, fam, sample_id, gvcf, tbi, role -> tuple(fam, sample_id, gvcf, tbi, role) }
+
+    // Split into role-specific channels for GLnexus
+    child_gvcf_merged = merged_gvcf_with_role
+        .filter { fam, sample_id, gvcf, tbi, role -> role == 'child' }
+        .map { fam, sample_id, gvcf, tbi, role -> tuple(fam, sample_id, gvcf, tbi) }
+
+    p1_gvcf_merged = merged_gvcf_with_role
+        .filter { fam, sample_id, gvcf, tbi, role -> role == 'parent1' }
+        .map { fam, sample_id, gvcf, tbi, role -> tuple(fam, sample_id, gvcf, tbi) }
+
+    p2_gvcf_merged = merged_gvcf_with_role
+        .filter { fam, sample_id, gvcf, tbi, role -> role == 'parent2' }
+        .map { fam, sample_id, gvcf, tbi, role -> tuple(fam, sample_id, gvcf, tbi) }
+
+    // GLNexus merge: reconstruct the input tuple grouped by family_id
+    glnexus_input_ch = child_gvcf_merged
+        .join(p1_gvcf_merged)
+        .join(p2_gvcf_merged)
 
     // Run GLnexus
     glnexus_trio_merge(glnexus_input_ch)
@@ -159,11 +246,11 @@ workflow WGS_TRIO {
     )
 
     // 1. Gather all parent VCFs into a single channel and format to [sample_id, vcf, vcf_tbi]
-    // deeptrio_wgs.out.p1_vcf / p2_vcf are: [family_id, parent_id, vcf, vcf_tbi]
-    parent_vcfs_ch = deeptrio_wgs.out.p1_vcf
-        .mix(deeptrio_wgs.out.p2_vcf)
-        .map { family_id, parent_id, vcf, vcf_tbi -> 
-            tuple(parent_id, vcf, vcf_tbi) 
+    // Use merged per-sample VCFs from bcftools_concat, filtered to parent roles
+    parent_vcfs_ch = merged_vcf_with_role
+        .filter { fam, sample_id, vcf, tbi, role -> role == 'parent1' || role == 'parent2' }
+        .map { fam, sample_id, vcf, tbi, role -> 
+            tuple(sample_id, vcf, tbi) 
         }
 
     // 2. Join the parent VCFs with their corresponding individual aligned BAMs
