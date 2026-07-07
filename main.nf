@@ -132,14 +132,14 @@ workflow WGS_TRIO {
 
     // Scatter: combine each trio with each chromosome
     deeptrio_scatter_ch = deeptrio_input_ch.combine(chromosomes_ch)
-    // Shape: [fam, child_id, child_bam, child_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai, chrom]
 
+    deeptrio_scatter_ch.into { deeptrio_trio_ch; deeptrio_chrom_ch }
     // Run DeepTrio per chromosome
     deeptrio_wgs_by_chrom(
         file(params.reference),
         file(params.reference_index),
-        deeptrio_scatter_ch.map { it[0..9] },  // trio tuple
-        deeptrio_scatter_ch.map { it[10] }      // chrom
+        deeptrio_trio_ch.map { trio, chrom -> trio },
+        deeptrio_chrom_ch.map { trio, chrom -> chrom }      // chrom
     )
 
     // Gather: collect per-chromosome VCFs per sample and merge
