@@ -15,6 +15,9 @@
         "trio_samplesheet": {
             "type": "string"
         },
+        "trio_aligned_samplesheet": {
+            "type": "string"
+        },
         "reference": {
             "type": "string",
             "default": "s3://pacbio-hifi-human-wgs-reference/dataset/hifi-wdl-resources-v2.0.0/GRCh38/human_GRCh38_no_alt_analysis_set.fasta"
@@ -73,7 +76,7 @@
         }
     },
     "required": [
-        "samplesheet",
+        
         "reference"
     ]
 }
