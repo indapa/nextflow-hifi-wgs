@@ -3,7 +3,17 @@
 
 
 include { pbmm2_align; cpg_methylation_calling; sawfish_discover; sawfish_joint_call; hiphase_small_variants } from './modules/pbtools'
-include { glnexus_trio_merge; deeptrio_wgs; deeptrio_wgs_by_chrom; bcftools_concat; deepvariant_wgs } from './modules/deepvariant'
+include { 
+    glnexus_trio_merge; 
+    deeptrio_wgs; 
+    deeptrio_wgs_by_chrom; 
+    deepvariant_wgs;
+    bcftools_concat as concat_p1_vcf;
+    bcftools_concat as concat_p2_vcf;
+    bcftools_concat as concat_child_gvcf;
+    bcftools_concat as concat_p1_gvcfs;
+    bcftools_concat as concat_p2_gvcfs 
+} from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { whatshap_trio_phase } from './modules/whatshap'
 include { mosdepth_run; infer_sex; plot_dist_coverage } from './modules/mosdepth'
@@ -170,12 +180,12 @@ workflow RUN_TRIO_PIPELINE {
 
     // Concat scattered chromosomes via the generic reusable process
     //child_vcf_merged  = bcftools_concat(child_vcfs_ch, 'vcf.gz').merged
-    p1_vcf_merged     = bcftools_concat(p1_vcfs_ch, 'vcf.gz').merged
-    p2_vcf_merged     = bcftools_concat(p2_vcfs_ch, 'vcf.gz').merged
+    p1_vcf_merged     = concat_p1_vcf(p1_vcfs_ch, 'vcf.gz').merged
+    p2_vcf_merged     = concat_p2_vcf(p2_vcfs_ch, 'vcf.gz').merged
 
-    child_gvcf_merged = bcftools_concat(child_gvcfs_ch, 'g.vcf.gz').merged
-    p1_gvcf_merged    = bcftools_concat(p1_gvcfs_ch, 'g.vcf.gz').merged
-    p2_gvcf_merged    = bcftools_concat(p2_gvcfs_ch, 'g.vcf.gz').merged
+    child_gvcf_merged = concat_child_gvcf(child_gvcfs_ch, 'g.vcf.gz').merged
+    p1_gvcf_merged    = concat_p1_gvcfs(p1_gvcfs_ch, 'g.vcf.gz').merged
+    p2_gvcf_merged    = concat_p2_gvcfs(p2_gvcfs_ch, 'g.vcf.gz').merged
 
     // Normalize and join gVCF channels strictly by family_id for GLnexus
     glnexus_input_ch = child_gvcf_merged.map { fam, _id, v, t -> tuple(fam, v, t) }
