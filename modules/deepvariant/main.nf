@@ -196,112 +196,66 @@ process deeptrio_wgs_by_chrom {
     """
 }
 
-
-process bcftools_concat_deeptrio_vcfs {
-    tag { "${sample_id}" }
+process bcftools_concat {
+    tag { "${sample_id} (${ext})" }
     publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
 
     container "quay.io/biocontainers/bcftools:1.21--h8b25389_1"
 
     input:
-        tuple val(family_id), val(sample_id), path(vcfs), path(tbis)
+        tuple val(family_id), val(sample_id), path(files), path(tbis)
+        val ext // Pass either "vcf.gz" or "g.vcf.gz"
 
     output:
-        tuple val(family_id), val(sample_id), path("${sample_id}.vcf.gz"), path("${sample_id}.vcf.gz.tbi"), emit: merged_vcf
+        tuple val(family_id), val(sample_id), path("${sample_id}.${ext}"), path("${sample_id}.${ext}.tbi"), emit: merged
 
     script:
     """
     # Build file list in genomic chromosome order
-    # Filenames follow the pattern: {sample_id}.{chrom}.vcf.gz
     for chrom in chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 \
                  chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 \
                  chr21 chr22 chrX chrY; do
-        if [ -f "${sample_id}.\${chrom}.vcf.gz" ]; then
-            echo "${sample_id}.\${chrom}.vcf.gz" >> vcf_list.txt
+        if [ -f "${sample_id}.\${chrom}.${ext}" ]; then
+            echo "${sample_id}.\${chrom}.${ext}" >> file_list.txt
         fi
     done
 
     bcftools concat \
         --naive \
-        --file-list vcf_list.txt \
+        --file-list file_list.txt \
         -Oz \
-        -o ${sample_id}.vcf.gz
+        -o ${sample_id}.${ext}
 
-    bcftools index -t ${sample_id}.vcf.gz
+    bcftools index -t ${sample_id}.${ext}
     """
 
     stub:
     """
-    touch ${sample_id}.vcf.gz
-    touch ${sample_id}.vcf.gz.tbi
+    touch ${sample_id}.${ext}
+    touch ${sample_id}.${ext}.tbi
     """
 }
 
-
-process bcftools_concat_deeptrio_gvcfs {
-    tag { "${sample_id}" }
-    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
-
-    container "quay.io/biocontainers/bcftools:1.21--h8b25389_1"
-
-    input:
-        tuple val(family_id), val(sample_id), path(gvcfs), path(tbis)
-
-    output:
-        tuple val(family_id), val(sample_id), path("${sample_id}.g.vcf.gz"), path("${sample_id}.g.vcf.gz.tbi"), emit: merged_gvcf
-
-    script:
-    """
-    # Build file list in genomic chromosome order
-    # Filenames follow the pattern: {sample_id}.{chrom}.g.vcf.gz
-    for chrom in chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 \
-                 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 \
-                 chr21 chr22 chrX chrY; do
-        if [ -f "${sample_id}.\${chrom}.g.vcf.gz" ]; then
-            echo "${sample_id}.\${chrom}.g.vcf.gz" >> gvcf_list.txt
-        fi
-    done
-
-    bcftools concat \
-        --naive \
-        --file-list gvcf_list.txt \
-        -Oz \
-        -o ${sample_id}.g.vcf.gz
-
-    bcftools index -t ${sample_id}.g.vcf.gz
-    """
-
-    stub:
-    """
-    touch ${sample_id}.g.vcf.gz
-    touch ${sample_id}.g.vcf.gz.tbi
-    """
-}
 
 
 process glnexus_trio_merge {
     tag { "${family_id}" }
     publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
     
-    // Using the container you requested (contains glnexus_cli, bcftools, bgzip)
     container "quay.io/mlin/glnexus:v1.2.7"
 
     input:
-    // We expect a tuple containing the Family ID plus all 3 gVCFs + indices
+    // Streamlined: Only family ID and the file tracks are needed here
     tuple val(family_id), \
-          val(child_id), path(child_gvcf), path(child_tbi), \
-          val(p1_id),    path(p1_gvcf),    path(p1_tbi), \
-          val(p2_id),    path(p2_gvcf),    path(p2_tbi)
+          path(child_gvcf), path(child_tbi), \
+          path(p1_gvcf),    path(p1_tbi), \
+          path(p2_gvcf),    path(p2_tbi)
 
     output:
     tuple val(family_id), path("${family_id}.joint.vcf.gz"), path("${family_id}.joint.vcf.gz.tbi"), emit: joint_vcf
 
     script:
     """
-    # 1. Run GLnexus
-    # We pipe stdout -> bcftools -> bgzip directly without switching containers
-    # --threads: Uses Nextflow allocated CPUs
-    
     glnexus_cli \
         --config DeepVariant_unfiltered \
         --threads ${task.cpus} \
@@ -311,7 +265,6 @@ process glnexus_trio_merge {
         | bcftools view - \
         | bgzip -c > ${family_id}.joint.vcf.gz
 
-    # 2. Index the resulting VCF
     tabix -p vcf ${family_id}.joint.vcf.gz
     """
 
@@ -341,7 +294,7 @@ process deepvariant_wgs {
     
 
     script:
-    def args = task.ext.args ?: ''
+    //def args = task.ext.args ?: ''
     def model_type = task.ext.model_type ?: 'PACBIO'
     
     """

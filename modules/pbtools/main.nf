@@ -15,7 +15,7 @@ process pbmm2_align {
     script:
     // Calculate sort threads as a fraction of total CPUs (common pattern)
     def sort_threads = 4
-    def sort_memory = task.ext.args ?: '-m 8G'
+    //def sort_memory = task.ext.args ?: '-m 8G'
     
     """
     # Set TMPDIR to use fast local storage if available
@@ -170,7 +170,7 @@ process sawfish_joint_call {
     script:
     // Groovy magic: transform the list [dir1, dir2, dir3] 
     // into the string "--sample dir1 --sample dir2 --sample dir3"
-    def sample_args = all_discover_dirs.collect { "--sample $it" }.join(' ')
+    def sample_args = all_discover_dirs.collect { d -> "--sample $d" }.join(' ')
 
     """
     set -euo pipefail
