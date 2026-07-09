@@ -46,6 +46,10 @@
             "type": "string",
             "default": "s3://embedbio-results/hifi-wgs-output/deepvariant"
         },
+        "intervals_dir": {
+            "type": "string",
+            "default": "s3://pacbio-datasets/resources/deepvariant-regions"
+        },
         "hiphase_output_dir": {
             "type": "string",
             "default": "s3://embedbio-results/hifi-wgs-output/hiphase"
