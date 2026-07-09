@@ -224,13 +224,13 @@ workflow RUN_TRIO_PIPELINE {
     final_p1_gvcf_chunks = concat_chrom_gvcfs_p1.out.merged_chrom.groupTuple(by: [0, 1])
     final_p2_gvcf_chunks = concat_chrom_gvcfs_p2.out.merged_chrom.groupTuple(by: [0, 1])
 
-    final_p1_vcf_chunks = concat_chrom_vcfs_p1.out.merged_chrom.groupTuple(by: [0, 1])
-    final_p2_vcf_chunks = concat_chrom_vcfs_p2.out.merged_chrom.groupTuple(by: [0, 1])
+    //final_p1_vcf_chunks = concat_chrom_vcfs_p1.out.merged_chrom.groupTuple(by: [0, 1])
+    //final_p2_vcf_chunks = concat_chrom_vcfs_p2.out.merged_chrom.groupTuple(by: [0, 1])
 
     child_gvcf_merged = concat_wgs_vcf_child(final_child_gvcf_chunks, 'g.vcf.gz').merged
 
-    p1_vcf_merged = concat_wgs_vcf_p1(final_p1_vcf_chunks, 'vcf.gz').merged
-    p2_vcf_merged = concat_wgs_vcf_p2(final_p2_vcf_chunks, 'vcf.gz').merged
+    //p1_vcf_merged = concat_wgs_vcf_p1(final_p1_vcf_chunks, 'vcf.gz').merged
+    //p2_vcf_merged = concat_wgs_vcf_p2(final_p2_vcf_chunks, 'vcf.gz').merged
 
     p1_gvcf_merged = concat_wgs_gvcf_p1(final_p1_gvcf_chunks, 'g.vcf.gz').merged
     p2_gvcf_merged = concat_wgs_gvcf_p2(final_p2_gvcf_chunks, 'g.vcf.gz').merged
