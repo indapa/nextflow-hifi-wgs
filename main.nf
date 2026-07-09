@@ -161,6 +161,9 @@ workflow RUN_TRIO_PIPELINE {
     main:
     intervals_ch = channel.fromPath("${params.intervals_dir}/*.bed")
 
+    print "DEBUG: Intervals channel contents:"
+    intervals_ch.view { it -> "DEBUG: Interval file: ${it}" }
+
     // Run DeepTrio (Scatter)
     deeptrio_wgs_by_chrom(
         file(params.reference),

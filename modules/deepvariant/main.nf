@@ -156,7 +156,7 @@ process deeptrio_wgs_by_chrom {
               val(child_id), path(child_bam), path(child_bai), \
               val(p1_id),    path(p1_bam),    path(p1_bai), \
               val(p2_id),    path(p2_bam),    path(p2_bai)
-        path interval_bed // Targeted region for this chromosome
+        each path (interval_bed) // Targeted region for this chromosome
 
     output:
         
