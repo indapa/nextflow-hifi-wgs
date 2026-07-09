@@ -8,11 +8,17 @@ include {
     deeptrio_wgs; 
     deeptrio_wgs_by_chrom; 
     deepvariant_wgs;
-    bcftools_concat as concat_p1_vcf;
-    bcftools_concat as concat_p2_vcf;
-    bcftools_concat as concat_child_gvcf;
-    bcftools_concat as concat_p1_gvcfs;
-    bcftools_concat as concat_p2_gvcfs 
+    bcftools_chrom_concat as concat_chrom_gvcfs_child;
+    bcftools_chrom_concat as concat_chrom_gvcfs_p1;
+    bcftools_chrom_concat as concat_chrom_gvcfs_p2;
+    bcftools_chrom_concat as concat_chrom_vcfs_p1;
+    bcftools_chrom_concat as concat_chrom_vcfs_p2;
+    
+    concat_wgs_vcf as concat_wgs_vcf_child;
+    concat_wgs_vcf as concat_wgs_vcf_p1;
+    concat_wgs_vcf as concat_wgs_vcf_p2;
+    concat_wgs_vcf as concat_wgs_gvcf_p1;
+    concat_wgs_vcf as concat_wgs_gvcf_p2
 } from './modules/deepvariant'
 include { bam_stats } from './modules/samtools'
 include { whatshap_trio_phase } from './modules/whatshap'
@@ -153,49 +159,102 @@ workflow RUN_TRIO_PIPELINE {
     individual_aligned_bams
 
     main:
-    chromosomes_ch = channel.of(
-        'chr1','chr2','chr3','chr4','chr5','chr6',
-        'chr7','chr8','chr9','chr10','chr11','chr12',
-        'chr13','chr14','chr15','chr16','chr17','chr18',
-        'chr19','chr20','chr21','chr22','chrX','chrY'
-    )
+    intervals_ch = channel.fromPath("${params.intervals_dir}/*.bed")
 
     // Run DeepTrio (Scatter)
     deeptrio_wgs_by_chrom(
         file(params.reference),
         file(params.reference_index),
         trio_bams_assembled,
-        chromosomes_ch
+        intervals_ch
     )
 
     // Group scattered outputs per sample/role to prepare for concat
-    //child_vcfs_ch  = deeptrio_wgs_by_chrom.out.child_vcf.groupTuple(by: [0, 1])
-    child_gvcfs_ch = deeptrio_wgs_by_chrom.out.child_gvcf.groupTuple(by: [0, 1])
 
-    p1_vcfs_ch     = deeptrio_wgs_by_chrom.out.p1_vcf.groupTuple(by: [0, 1])
-    p1_gvcfs_ch    = deeptrio_wgs_by_chrom.out.p1_gvcf.groupTuple(by: [0, 1])
+    child_gvcfs_by_chrom = deeptrio_wgs_by_chrom.out.child_gvcf
+        .map { fam, id, interval, gvcf, tbi ->
+            def chrom = interval.split('_')[0]
+            return tuple(fam, id, chrom, gvcf, tbi)
+        }
+        .groupTuple(by:[0,1,2])
 
-    p2_vcfs_ch     = deeptrio_wgs_by_chrom.out.p2_vcf.groupTuple(by: [0, 1])
-    p2_gvcfs_ch    = deeptrio_wgs_by_chrom.out.p2_gvcf.groupTuple(by: [0, 1])
+    concat_chrom_gvcfs_child(child_gvcfs_by_chrom, 'g.vcf.gz')
 
-    // Concat scattered chromosomes via the generic reusable process
-    //child_vcf_merged  = bcftools_concat(child_vcfs_ch, 'vcf.gz').merged
-    p1_vcf_merged     = concat_p1_vcf(p1_vcfs_ch, 'vcf.gz').merged
-    p2_vcf_merged     = concat_p2_vcf(p2_vcfs_ch, 'vcf.gz').merged
+    // group p1 and p2 gVCFs by chromosome
+    p1_gvcfs_by_chrom = deeptrio_wgs_by_chrom.out.p1_gvcf
+        .map { fam, id, interval, gvcf, tbi ->
+            def chrom = interval.split('_')[0]
+            return tuple(fam, id, chrom, gvcf, tbi)
+        }
+        .groupTuple(by:[0,1,2])
 
-    child_gvcf_merged = concat_child_gvcf(child_gvcfs_ch, 'g.vcf.gz').merged
-    p1_gvcf_merged    = concat_p1_gvcfs(p1_gvcfs_ch, 'g.vcf.gz').merged
-    p2_gvcf_merged    = concat_p2_gvcfs(p2_gvcfs_ch, 'g.vcf.gz').merged
+    concat_chrom_gvcfs_p1(p1_gvcfs_by_chrom, 'g.vcf.gz')
 
-    // Normalize and join gVCF channels strictly by family_id for GLnexus
-    glnexus_input_ch = child_gvcf_merged.map { fam, _id, v, t -> tuple(fam, v, t) }
-        .join( p1_gvcf_merged.map { fam, _id, v, t -> tuple(fam, v, t) } )
-        .join( p2_gvcf_merged.map { fam, _id, v, t -> tuple(fam, v, t) } )
+    p2_gvcfs_by_chrom = deeptrio_wgs_by_chrom.out.p2_gvcf
+        .map { fam, id, interval, gvcf, tbi ->
+            def chrom = interval.split('_')[0]
+            return tuple(fam, id, chrom, gvcf, tbi)
+        }
+        .groupTuple(by:[0,1,2])
+
+    concat_chrom_gvcfs_p2(p2_gvcfs_by_chrom, 'g.vcf.gz')
+
+    // group p1 and p2 VCFs by chromosome
+    p1_vcfs_by_chrom = deeptrio_wgs_by_chrom.out.p1_vcf
+        .map { fam, id, interval, vcf, tbi ->
+            def chrom = interval.split('_')[0]
+            return tuple(fam, id, chrom, vcf, tbi)
+        }
+        .groupTuple(by:[0,1,2])
+
+    concat_chrom_vcfs_p1(p1_vcfs_by_chrom, 'vcf.gz')
+
+    p2_vcfs_by_chrom = deeptrio_wgs_by_chrom.out.p2_vcf
+        .map { fam, id, interval, vcf, tbi ->
+            def chrom = interval.split('_')[0]
+            return tuple(fam, id, chrom, vcf, tbi)
+        }
+        .groupTuple(by:[0,1,2])
+
+    concat_chrom_vcfs_p2(p2_vcfs_by_chrom, 'vcf.gz')
+
+    //group and concat all 24 chromsomes for final WGS
+    final_child_gvcf_chunks = concat_chrom_gvcfs_child.out.merged_chrom.groupTuple(by: [0, 1])
+
+    final_p1_gvcf_chunks = concat_chrom_gvcfs_p1.out.merged_chrom.groupTuple(by: [0, 1])
+    final_p2_gvcf_chunks = concat_chrom_gvcfs_p2.out.merged_chrom.groupTuple(by: [0, 1])
+
+    final_p1_vcf_chunks = concat_chrom_vcfs_p1.out.merged_chrom.groupTuple(by: [0, 1])
+    final_p2_vcf_chunks = concat_chrom_vcfs_p2.out.merged_chrom.groupTuple(by: [0, 1])
+
+    child_gvcf_merged = concat_wgs_vcf_child(final_child_gvcf_chunks, 'g.vcf.gz').merged
+
+    p1_vcf_merged = concat_wgs_vcf_p1(final_p1_vcf_chunks, 'vcf.gz').merged
+    p2_vcf_merged = concat_wgs_vcf_p2(final_p2_vcf_chunks, 'vcf.gz').merged
+
+    p1_gvcf_merged = concat_wgs_gvcf_p1(final_p1_gvcf_chunks, 'g.vcf.gz').merged
+    p2_gvcf_merged = concat_wgs_gvcf_p2(final_p2_gvcf_chunks, 'g.vcf.gz').merged
+
+
+    // assembly GLNexus input
+    
+    // 1. Strip out the unique sample_ids so we can join strictly by family_id
+    child_g_track = child_gvcf_merged.map { fam, _id, v, t -> tuple(fam, v, t) }
+    p1_g_track    = p1_gvcf_merged.map    { fam, _id, v, t -> tuple(fam, v, t) }
+    p2_g_track    = p2_gvcf_merged.map    { fam, _id, v, t -> tuple(fam, v, t) }
+
+    // 2. Multi-join the streams into a single synchronous 7-element tuple:
+    // [ family_id, child_gvcf, child_tbi, p1_gvcf, p1_tbi, p2_gvcf, p2_tbi ]
+    glnexus_input_ch = child_g_track
+        .join(p1_g_track)
+        .join(p2_g_track)
 
     glnexus_trio_merge(glnexus_input_ch)
 
+    /*
     // Assemble WhatsHap Input: Join joint VCF with our complete family structure channel
     whatshap_input_ch = glnexus_trio_merge.out.joint_vcf.join(trio_bams_assembled)
+    
 
     whatshap_trio_phase(
         file(params.reference), 
@@ -262,6 +321,7 @@ workflow RUN_TRIO_PIPELINE {
     sawfish_joint_call(
         sawfish_discover.out.discover_dir.collect()
     )
+*/
 }
 
 // =========================================================================

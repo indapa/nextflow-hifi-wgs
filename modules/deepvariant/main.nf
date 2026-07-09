@@ -144,7 +144,7 @@ process deeptrio_wgs {
 }
 
 process deeptrio_wgs_by_chrom {
-    tag { "${family_id}_${chrom}" }
+    tag { "${family_id}_${interval_bed.baseName}" }
     publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}/by_chrom" }, mode: 'copy', overwrite: true
 
     container "google/deepvariant:deeptrio-1.10.0"
@@ -156,15 +156,18 @@ process deeptrio_wgs_by_chrom {
               val(child_id), path(child_bam), path(child_bai), \
               val(p1_id),    path(p1_bam),    path(p1_bai), \
               val(p2_id),    path(p2_bam),    path(p2_bai)
-        each chrom
+        path interval_bed // Targeted region for this chromosome
 
     output:
-        tuple val(family_id), val(child_id), val(chrom), path("${child_id}.${chrom}.vcf.gz"), path("${child_id}.${chrom}.vcf.gz.tbi"), emit: child_vcf
-        tuple val(family_id), val(child_id), val(chrom), path("${child_id}.${chrom}.g.vcf.gz"), path("${child_id}.${chrom}.g.vcf.gz.tbi"), emit: child_gvcf
-        tuple val(family_id), val(p1_id), val(chrom), path("${p1_id}.${chrom}.vcf.gz"), path("${p1_id}.${chrom}.vcf.gz.tbi"), emit: p1_vcf
-        tuple val(family_id), val(p1_id), val(chrom), path("${p1_id}.${chrom}.g.vcf.gz"), path("${p1_id}.${chrom}.g.vcf.gz.tbi"), emit: p1_gvcf
-        tuple val(family_id), val(p2_id), val(chrom), path("${p2_id}.${chrom}.vcf.gz"), path("${p2_id}.${chrom}.vcf.gz.tbi"), emit: p2_vcf
-        tuple val(family_id), val(p2_id), val(chrom), path("${p2_id}.${chrom}.g.vcf.gz"), path("${p2_id}.${chrom}.g.vcf.gz.tbi"), emit: p2_gvcf
+        
+        tuple val(family_id), val(child_id), val(interval_bed.baseName), path("${child_id}.${interval_bed.baseName}.vcf.gz"),   path("${child_id}.${interval_bed.baseName}.vcf.gz.tbi"),   emit: child_vcf
+        tuple val(family_id), val(child_id), val(interval_bed.baseName), path("${child_id}.${interval_bed.baseName}.g.vcf.gz"), path("${child_id}.${interval_bed.baseName}.g.vcf.gz.tbi"), emit: child_gvcf
+    
+        tuple val(family_id), val(p1_id),    val(interval_bed.baseName), path("${p1_id}.${interval_bed.baseName}.vcf.gz"),     path("${p1_id}.${interval_bed.baseName}.vcf.gz.tbi"),     emit: p1_vcf
+        tuple val(family_id), val(p1_id),    val(interval_bed.baseName), path("${p1_id}.${interval_bed.baseName}.g.vcf.gz"),   path("${p1_id}.${interval_bed.baseName}.g.vcf.gz.tbi"),   emit: p1_gvcf
+    
+        tuple val(family_id), val(p2_id),    val(interval_bed.baseName), path("${p2_id}.${interval_bed.baseName}.vcf.gz"),     path("${p2_id}.${interval_bed.baseName}.vcf.gz.tbi"),     emit: p2_vcf
+        tuple val(family_id), val(p2_id),    val(interval_bed.baseName), path("${p2_id}.${interval_bed.baseName}.g.vcf.gz"),   path("${p2_id}.${interval_bed.baseName}.g.vcf.gz.tbi"),   emit: p2_gvcf
 
     script:
     def model_type = task.ext.model_type ?: 'PACBIO'
@@ -178,32 +181,65 @@ process deeptrio_wgs_by_chrom {
         --sample_name_child "${child_id}" \
         --sample_name_parent1 "${p1_id}" \
         --sample_name_parent2 "${p2_id}" \
-        --output_vcf_child ${child_id}.${chrom}.vcf.gz \
-        --output_vcf_parent1 ${p1_id}.${chrom}.vcf.gz \
-        --output_vcf_parent2 ${p2_id}.${chrom}.vcf.gz \
-        --output_gvcf_child ${child_id}.${chrom}.g.vcf.gz \
-        --output_gvcf_parent1 ${p1_id}.${chrom}.g.vcf.gz \
-        --output_gvcf_parent2 ${p2_id}.${chrom}.g.vcf.gz \
+        --output_vcf_child ${child_id}.${interval_bed.baseName}.vcf.gz \
+        --output_vcf_parent1 ${p1_id}.${interval_bed.baseName}.vcf.gz \
+        --output_vcf_parent2 ${p2_id}.${interval_bed.baseName}.vcf.gz \
+        --output_gvcf_child ${child_id}.${interval_bed.baseName}.g.vcf.gz \
+        --output_gvcf_parent1 ${p1_id}.${interval_bed.baseName}.g.vcf.gz \
+        --output_gvcf_parent2 ${p2_id}.${interval_bed.baseName}.g.vcf.gz \
         --num_shards ${task.cpus} \
-        --regions ${chrom}
+        --regions ${interval_bed}
     """
 
     stub:
     """
-    touch ${child_id}.${chrom}.vcf.gz ${child_id}.${chrom}.vcf.gz.tbi ${child_id}.${chrom}.g.vcf.gz ${child_id}.${chrom}.g.vcf.gz.tbi
-    touch ${p1_id}.${chrom}.vcf.gz ${p1_id}.${chrom}.vcf.gz.tbi ${p1_id}.${chrom}.g.vcf.gz ${p1_id}.${chrom}.g.vcf.gz.tbi
-    touch ${p2_id}.${chrom}.vcf.gz ${p2_id}.${chrom}.vcf.gz.tbi ${p2_id}.${chrom}.g.vcf.gz ${p2_id}.${chrom}.g.vcf.gz.tbi
+    touch ${child_id}.${interval_bed.baseName}.vcf.gz ${child_id}.${interval_bed.baseName}.vcf.gz.tbi ${child_id}.${interval_bed.baseName}.g.vcf.gz ${child_id}.${interval_bed.baseName}.g.vcf.gz.tbi
+    touch ${p1_id}.${interval_bed.baseName}.vcf.gz ${p1_id}.${interval_bed.baseName}.vcf.gz.tbi ${p1_id}.${interval_bed.baseName}.g.vcf.gz ${p1_id}.${interval_bed.baseName}.g.vcf.gz.tbi
+    touch ${p2_id}.${interval_bed.baseName}.vcf.gz ${p2_id}.${interval_bed.baseName}.vcf.gz.tbi ${p2_id}.${interval_bed.baseName}.g.vcf.gz ${p2_id}.${interval_bed.baseName}.g.vcf.gz.tbi
     """
 }
 
-process bcftools_concat {
+process bcftools_chrom_concat {
     tag { "${sample_id} (${ext})" }
     publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
 
-    container "quay.io/biocontainers/bcftools:1.21--h8b25389_1"
+    container "community.wave.seqera.io/library/bcftools:1.21--4335bec1d7b44d11"
 
     input:
-        tuple val(family_id), val(sample_id), path(files), path(tbis)
+        tuple val(family_id), val(sample_id), val(chrom), path(files), path(tbis)
+        val ext // Pass either "vcf.gz" or "g.vcf.gz"
+
+    output:
+        tuple val(family_id), val(sample_id), path("${sample_id}.${chrom}.${ext}"), path("${sample_id}.${chrom}.${ext}.tbi"), emit: merged_chrom
+    
+    script:
+    """
+    ls -1 *.${ext} | sort -V > file_list.txt
+
+    bcftools concat \
+        -a \
+        --file-list file_list.txt \
+        -Oz \
+        -o ${sample_id}.${chrom}.${ext}
+
+    bcftools index -t ${sample_id}.${chrom}.${ext}
+    """
+
+    stub:
+    """
+    touch ${sample_id}.${chrom}.${ext}
+    touch ${sample_id}.${chrom}.${ext}.tbi
+    """
+}
+
+process concat_wgs_vcf {
+    tag { "${sample_id} Final WGS (${ext})" }
+    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
+
+    container "community.wave.seqera.io/library/bcftools:1.21--4335bec1d7b44d11"
+
+    input:
+        tuple val(family_id), val(sample_id),  path(chrom_files), path(tbis)
         val ext // Pass either "vcf.gz" or "g.vcf.gz"
 
     output:
@@ -211,29 +247,31 @@ process bcftools_concat {
 
     script:
     """
-    # Build file list in genomic chromosome order
-    for chrom in chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 \
-                 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 \
-                 chr21 chr22 chrX chrY; do
-        if [ -f "${sample_id}.\${chrom}.${ext}" ]; then
-            echo "${sample_id}.\${chrom}.${ext}" >> file_list.txt
+    for c in chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 \
+             chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 \
+             chr21 chr22 chrX chrY chrM; do
+        if [ -f "${sample_id}.\${c}.${ext}" ]; then
+            echo "${sample_id}.\${c}.${ext}" >> wgs_list.txt
         fi
     done
 
+    # Safe to use --naive here because whole chromosomes do not overlap coordinates
     bcftools concat \
         --naive \
-        --file-list file_list.txt \
+        --file-list wgs_list.txt \
         -Oz \
         -o ${sample_id}.${ext}
 
     bcftools index -t ${sample_id}.${ext}
     """
-
+    
     stub:
     """
     touch ${sample_id}.${ext}
     touch ${sample_id}.${ext}.tbi
     """
+    
+
 }
 
 
