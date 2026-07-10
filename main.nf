@@ -177,15 +177,14 @@ workflow RUN_TRIO_PIPELINE {
         return "Sliced Family: ${fam}, Child: ${c_id}, ${c_bam}, ${c_bai},${p1_id}, ${p1_bam}, ${p1_bai}, ${p2_id}, ${p2_bam}, ${p2_bai}, Interval: ${interval_bed.baseName}"
     }
 
-    /*
+    
     // Run DeepTrio (Scatter)
     deeptrio_wgs_by_chrom(
         file(params.reference),
         file(params.reference_index),
-        trio_bams_assembled,
-        intervals_ch
+        slice_trio_bams_by_interval.out.sliced_trio_package
     )
-
+    /*/
     // Group scattered outputs per sample/role to prepare for concat
 
     child_gvcfs_by_chrom = deeptrio_wgs_by_chrom.out.child_gvcf
@@ -195,6 +194,7 @@ workflow RUN_TRIO_PIPELINE {
         }
         .groupTuple(by:[0,1,2])
 
+    /
     concat_chrom_gvcfs_child(child_gvcfs_by_chrom, 'g.vcf.gz')
 
     // group p1 and p2 gVCFs by chromosome
