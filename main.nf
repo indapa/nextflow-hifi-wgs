@@ -175,7 +175,7 @@ workflow RUN_TRIO_PIPELINE {
     // view the output of the sliced trio BAMs
     //slice_trio_bams_by_interval.out.sliced_trio_package.view { fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai, interval_bed ->
     //    return "Sliced Family: ${fam}, Child: ${c_id}, ${c_bam}, ${c_bai},${p1_id}, ${p1_bam}, ${p1_bai}, ${p2_id}, ${p2_bam}, ${p2_bai}, Interval: ${interval_bed.baseName}"
-    }
+    
 
     
     // Run DeepTrio (Scatter)
@@ -184,7 +184,7 @@ workflow RUN_TRIO_PIPELINE {
         file(params.reference_index),
         slice_trio_bams_by_interval.out.sliced_trio_package
     )
-    /*/
+    /*
     // Group scattered outputs per sample/role to prepare for concat
 
     child_gvcfs_by_chrom = deeptrio_wgs_by_chrom.out.child_gvcf
@@ -338,7 +338,8 @@ workflow RUN_TRIO_PIPELINE {
     sawfish_joint_call(
         sawfish_discover.out.discover_dir.collect()
     )
-*/
+
+    */  
 }
 
 // =========================================================================
