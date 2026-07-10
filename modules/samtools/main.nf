@@ -1,8 +1,7 @@
 
 process slice_trio_bams_by_interval {
     tag { "${family_id} - ${interval_bed.baseName}" }
-    cpus 2
-    memory '4 GB'
+   
     container 'community.wave.seqera.io/library/samtools:1.21--0d76da7c3cf7751c'
     
     
@@ -20,10 +19,10 @@ process slice_trio_bams_by_interval {
 
     script:
     """
-    # Fast parallel generation of regional mini-BAMs
-    samtools view -b -M -L ${interval_bed} ${c_bam} > ${interval_bed.baseName}.child.bam 
-    samtools view -b -M -L ${interval_bed} ${p1_bam} > ${interval_bed.baseName}.p1.bam 
-    samtools view -b -M -L ${interval_bed} ${p2_bam} > ${interval_bed.baseName}.p2.bam 
+    # generation of regional mini-BAMs
+    samtools view -@ ${task.cpus} -b -M -L ${interval_bed} ${c_bam} > ${interval_bed.baseName}.child.bam 
+    samtools view -@ ${task.cpus} -b -M -L ${interval_bed} ${p1_bam} > ${interval_bed.baseName}.p1.bam 
+    samtools view -@ ${task.cpus} -b -M -L ${interval_bed} ${p2_bam} > ${interval_bed.baseName}.p2.bam 
     
 
     samtools index ${interval_bed.baseName}.child.bam 
