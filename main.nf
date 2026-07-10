@@ -159,7 +159,11 @@ workflow RUN_TRIO_PIPELINE {
     individual_aligned_bams
 
     main:
-    intervals_ch = channel.fromPath("${params.intervals_dir}/*.bed")
+    
+    // 1. Load all interval BED files from the specified directory
+    raw_intervals_ch = channel.fromPath("${params.intervals_dir}/*.bed")
+    // 2. Filter down strictly to chr20 chunks for the PoC
+    intervals_ch = raw_intervals_ch.filter { it.baseName =~ /^chr20_/ }
 
     print "DEBUG: Intervals channel contents:"
     intervals_ch.view { it -> "DEBUG: Interval file: ${it}" }
