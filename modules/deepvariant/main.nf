@@ -148,6 +148,8 @@ process deeptrio_wgs_by_chrom {
     publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}/by_chrom" }, mode: 'copy', overwrite: true
 
     container "google/deepvariant:deeptrio-1.10.0"
+    
+    stageInMode 'copy' // avoid virtual file pointers with deep variant
 
     input:
         path ref
@@ -156,7 +158,7 @@ process deeptrio_wgs_by_chrom {
               val(child_id), path(child_bam), path(child_bai), \
               val(p1_id),    path(p1_bam),    path(p1_bai), \
               val(p2_id),    path(p2_bam),    path(p2_bai)
-        each path (interval_bed) // Targeted region for this chromosome
+            path (interval_bed) // Targeted region for this chromosome
 
     output:
         

@@ -20,10 +20,9 @@ include {
     concat_wgs_vcf as concat_wgs_gvcf_p1;
     concat_wgs_vcf as concat_wgs_gvcf_p2
 } from './modules/deepvariant'
-include { bam_stats } from './modules/samtools'
+include { bam_stats; slice_trio_bams_by_interval; samtools_index } from './modules/samtools'
 include { whatshap_trio_phase } from './modules/whatshap'
 include { mosdepth_run; infer_sex; plot_dist_coverage } from './modules/mosdepth'
-include { samtools_index } from './modules/samtools'
 
 
 // =========================================================================
@@ -163,11 +162,17 @@ workflow RUN_TRIO_PIPELINE {
     // 1. Load all interval BED files from the specified directory
     raw_intervals_ch = channel.fromPath("${params.intervals_dir}/*.bed")
     // 2. Filter down strictly to chr20 chunks for the PoC
-    intervals_ch = raw_intervals_ch.filter { it.baseName =~ /^chr20_/ }
+    intervals_ch = raw_intervals_ch.filter { f-> f.baseName =~ /^chr20_/ }
 
-    print "DEBUG: Intervals channel contents:"
-    intervals_ch.view { it -> "DEBUG: Interval file: ${it}" }
+    // combine trio tuple with each interval BED file to create a scatter input channel
+    slicing_matrix_ch = trio_bams_assembled.combine(intervals_ch)
+    print "DEBUG: trio interval slice  channel contents:"
+    slicing_matrix_ch.view { fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai, interval_bed ->
+        return "Family: ${fam}, Child: ${c_id}, Interval: ${interval_bed.baseName}"
+    }
 
+
+    /*
     // Run DeepTrio (Scatter)
     deeptrio_wgs_by_chrom(
         file(params.reference),
