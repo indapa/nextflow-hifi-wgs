@@ -170,7 +170,12 @@ workflow RUN_TRIO_PIPELINE {
     slicing_matrix_ch.view { fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai, interval_bed ->
         return "Family: ${fam}, Child: ${c_id}, ${c_bam}, ${c_bai},${p1_id}, ${p1_bam}, ${p1_bai}, ${p2_id}, ${p2_bam}, ${p2_bai}, Interval: ${interval_bed.baseName}"
     }
+    slice_trio_bams_by_interval(slicing_matrix_ch)
 
+    // view the output of the sliced trio BAMs
+    slice_trio_bams_by_interval.out.sliced_trio_package.view { fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai, interval_bed ->
+        return "Sliced Family: ${fam}, Child: ${c_id}, ${c_bam}, ${c_bai},${p1_id}, ${p1_bam}, ${p1_bai}, ${p2_id}, ${p2_bam}, ${p2_bai}, Interval: ${interval_bed.baseName}"
+    }
 
     /*
     // Run DeepTrio (Scatter)
