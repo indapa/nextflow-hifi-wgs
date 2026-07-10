@@ -168,8 +168,7 @@ workflow RUN_TRIO_PIPELINE {
     slicing_matrix_ch = trio_bams_assembled.combine(intervals_ch)
     print "DEBUG: trio interval slice  channel contents:"
     slicing_matrix_ch.view { fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai, interval_bed ->
-        return "Family: ${fam}, Child: ${c_id}, ${c_bam}, ${c_bai},
-        ${p1_id}, ${p1_bam}, ${p1_bai}, ${p2_id}, ${p2_bam}, ${p2_bai}, Interval: ${interval_bed.baseName}"
+        return "Family: ${fam}, Child: ${c_id}, ${c_bam}, ${c_bai},${p1_id}, ${p1_bam}, ${p1_bai}, ${p2_id}, ${p2_bam}, ${p2_bai}, Interval: ${interval_bed.baseName}"
     }
 
 
