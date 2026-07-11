@@ -178,11 +178,11 @@ workflow RUN_TRIO_PIPELINE {
     
     all_chunks_ch = channel.empty()
         .mix(
-            deeptrio_wgs_by_chrom.out.child_gvcf.map{ fam, id, bed, f, t -> [ [fam, id, bed.baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
-            deeptrio_wgs_by_chrom.out.p1_gvcf.map   { fam, id, bed, f, t -> [ [fam, id, bed.baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
-            deeptrio_wgs_by_chrom.out.p2_gvcf.map   { fam, id, bed, f, t -> [ [fam, id, bed.baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
-            deeptrio_wgs_by_chrom.out.p1_vcf.map    { fam, id, bed, f, t -> [ [fam, id, bed.baseName.split('_')[0], 'vcf.gz'],   f, t ] },
-            deeptrio_wgs_by_chrom.out.p2_vcf.map    { fam, id, bed, f, t -> [ [fam, id, bed.baseName.split('_')[0], 'vcf.gz'],   f, t ] }
+            deeptrio_wgs_by_chrom.out.child_gvcf.map{ fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
+            deeptrio_wgs_by_chrom.out.p1_gvcf.map   { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
+            deeptrio_wgs_by_chrom.out.p2_gvcf.map   { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
+            deeptrio_wgs_by_chrom.out.p1_vcf.map    { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'vcf.gz'],   f, t ] },
+            deeptrio_wgs_by_chrom.out.p2_vcf.map    { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'vcf.gz'],   f, t ] }
         )
 
     // Group the 2Mb fragments up by their distinct chromosome
