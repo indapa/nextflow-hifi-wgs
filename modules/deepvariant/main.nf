@@ -203,7 +203,7 @@ process deeptrio_wgs_by_chrom {
 
 process concat_chrom_chunks_vcf {
     tag { "${meta[0]} - ${meta[1]} - ${meta[2]} (${meta[3]})" }
-    publishDir { "${params.deepvariant_output_dir}/DV_trio/${meta[2]}/by_chrom" }, mode: 'copy', overwrite: true
+    publishDir { "${params.deepvariant_output_dir}/DV_trio/${meta[0]}/by_chrom/${meta[2]}" }, mode: 'copy', overwrite: true
 
 
     container "community.wave.seqera.io/library/bcftools:1.21--4335bec1d7b44d11"
