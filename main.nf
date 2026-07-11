@@ -8,17 +8,8 @@ include {
     deeptrio_wgs; 
     deeptrio_wgs_by_chrom; 
     deepvariant_wgs;
-    bcftools_chrom_concat as concat_chrom_gvcfs_child;
-    bcftools_chrom_concat as concat_chrom_gvcfs_p1;
-    bcftools_chrom_concat as concat_chrom_gvcfs_p2;
-    bcftools_chrom_concat as concat_chrom_vcfs_p1;
-    bcftools_chrom_concat as concat_chrom_vcfs_p2;
-    
-    concat_wgs_vcf as concat_wgs_vcf_child;
-    concat_wgs_vcf as concat_wgs_vcf_p1;
-    concat_wgs_vcf as concat_wgs_vcf_p2;
-    concat_wgs_vcf as concat_wgs_gvcf_p1;
-    concat_wgs_vcf as concat_wgs_gvcf_p2
+    concat_chrom_chunks_vcf;
+
 } from './modules/deepvariant'
 include { bam_stats; slice_trio_bams_by_interval; samtools_index } from './modules/samtools'
 include { whatshap_trio_phase } from './modules/whatshap'
@@ -184,77 +175,26 @@ workflow RUN_TRIO_PIPELINE {
         file(params.reference_index),
         slice_trio_bams_by_interval.out.sliced_trio_package
     )
-    /*
-    // Group scattered outputs per sample/role to prepare for concat
+    
+    all_chunks_ch = channel.empty()
+        .mix(
+            deeptrio_wgs_by_chrom.out.child_gvcf.map{ fam, id, bed, f, t -> [ [fam, id, bed.baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
+            deeptrio_wgs_by_chrom.out.p1_gvcf.map   { fam, id, bed, f, t -> [ [fam, id, bed.baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
+            deeptrio_wgs_by_chrom.out.p2_gvcf.map   { fam, id, bed, f, t -> [ [fam, id, bed.baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
+            deeptrio_wgs_by_chrom.out.p1_vcf.map    { fam, id, bed, f, t -> [ [fam, id, bed.baseName.split('_')[0], 'vcf.gz'],   f, t ] },
+            deeptrio_wgs_by_chrom.out.p2_vcf.map    { fam, id, bed, f, t -> [ [fam, id, bed.baseName.split('_')[0], 'vcf.gz'],   f, t ] }
+        )
 
-    child_gvcfs_by_chrom = deeptrio_wgs_by_chrom.out.child_gvcf
-        .map { fam, id, interval, gvcf, tbi ->
-            def chrom = interval.split('_')[0]
-            return tuple(fam, id, chrom, gvcf, tbi)
-        }
-        .groupTuple(by:[0,1,2])
+    // Group the 2Mb fragments up by their distinct chromosome
+    grouped_chrom_chunks = all_chunks_ch
+        .map { meta, f, t -> tuple(meta, f, t) }
+        .groupTuple(by: 0) // Groups files sharing the exact same [fam, id, chrom, type]
 
-    /
-    concat_chrom_gvcfs_child(child_gvcfs_by_chrom, 'g.vcf.gz')
-
-    // group p1 and p2 gVCFs by chromosome
-    p1_gvcfs_by_chrom = deeptrio_wgs_by_chrom.out.p1_gvcf
-        .map { fam, id, interval, gvcf, tbi ->
-            def chrom = interval.split('_')[0]
-            return tuple(fam, id, chrom, gvcf, tbi)
-        }
-        .groupTuple(by:[0,1,2])
-
-    concat_chrom_gvcfs_p1(p1_gvcfs_by_chrom, 'g.vcf.gz')
-
-    p2_gvcfs_by_chrom = deeptrio_wgs_by_chrom.out.p2_gvcf
-        .map { fam, id, interval, gvcf, tbi ->
-            def chrom = interval.split('_')[0]
-            return tuple(fam, id, chrom, gvcf, tbi)
-        }
-        .groupTuple(by:[0,1,2])
-
-    concat_chrom_gvcfs_p2(p2_gvcfs_by_chrom, 'g.vcf.gz')
-
-    // group p1 and p2 VCFs by chromosome
-    p1_vcfs_by_chrom = deeptrio_wgs_by_chrom.out.p1_vcf
-        .map { fam, id, interval, vcf, tbi ->
-            def chrom = interval.split('_')[0]
-            return tuple(fam, id, chrom, vcf, tbi)
-        }
-        .groupTuple(by:[0,1,2])
-
-    concat_chrom_vcfs_p1(p1_vcfs_by_chrom, 'vcf.gz')
-
-    p2_vcfs_by_chrom = deeptrio_wgs_by_chrom.out.p2_vcf
-        .map { fam, id, interval, vcf, tbi ->
-            def chrom = interval.split('_')[0]
-            return tuple(fam, id, chrom, vcf, tbi)
-        }
-        .groupTuple(by:[0,1,2])
-
-    concat_chrom_vcfs_p2(p2_vcfs_by_chrom, 'vcf.gz')
-
-    //group and concat all 24 chromsomes for final WGS
-    final_child_gvcf_chunks = concat_chrom_gvcfs_child.out.merged_chrom.groupTuple(by: [0, 1])
-
-    final_p1_gvcf_chunks = concat_chrom_gvcfs_p1.out.merged_chrom.groupTuple(by: [0, 1])
-    final_p2_gvcf_chunks = concat_chrom_gvcfs_p2.out.merged_chrom.groupTuple(by: [0, 1])
-
-    //final_p1_vcf_chunks = concat_chrom_vcfs_p1.out.merged_chrom.groupTuple(by: [0, 1])
-    //final_p2_vcf_chunks = concat_chrom_vcfs_p2.out.merged_chrom.groupTuple(by: [0, 1])
-
-    child_gvcf_merged = concat_wgs_vcf_child(final_child_gvcf_chunks, 'g.vcf.gz').merged
-
-    //p1_vcf_merged = concat_wgs_vcf_p1(final_p1_vcf_chunks, 'vcf.gz').merged
-    //p2_vcf_merged = concat_wgs_vcf_p2(final_p2_vcf_chunks, 'vcf.gz').merged
-
-    p1_gvcf_merged = concat_wgs_gvcf_p1(final_p1_gvcf_chunks, 'g.vcf.gz').merged
-    p2_gvcf_merged = concat_wgs_gvcf_p2(final_p2_gvcf_chunks, 'g.vcf.gz').merged
-
+    // Execute one single reusable process for all variants and family roles!
+    concat_chrom_chunks_vcf(grouped_chrom_chunks)
 
     // assembly GLNexus input
-    
+    /*
     // 1. Strip out the unique sample_ids so we can join strictly by family_id
     child_g_track = child_gvcf_merged.map { fam, _id, v, t -> tuple(fam, v, t) }
     p1_g_track    = p1_gvcf_merged.map    { fam, _id, v, t -> tuple(fam, v, t) }

@@ -145,7 +145,7 @@ process deeptrio_wgs {
 
 process deeptrio_wgs_by_chrom {
     tag { "${family_id}_${interval_bed.baseName}" }
-    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}/by_chrom" }, mode: 'copy', overwrite: true
+    //publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}/by_chrom" }, mode: 'copy', overwrite: true
 
     container "google/deepvariant:deeptrio-1.10.0"
     
@@ -201,36 +201,31 @@ process deeptrio_wgs_by_chrom {
     """
 }
 
-process bcftools_chrom_concat {
-    tag { "${sample_id} (${ext})" }
-    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
+process concat_chrom_chunks_vcf {
+    tag { "${meta[0]} - ${meta[1]} - ${meta[2]} (${meta[3]})" }
+    publishDir { "${params.deepvariant_output_dir}/DV_trio/${meta[2]}/by_chrom" }, mode: 'copy', overwrite: true
+
 
     container "community.wave.seqera.io/library/bcftools:1.21--4335bec1d7b44d11"
 
     input:
-        tuple val(family_id), val(sample_id), val(chrom), path(files), path(tbis)
-        val ext // Pass either "vcf.gz" or "g.vcf.gz"
+    tuple val(meta), path(chunk_files), path(chunk_indices)
 
     output:
-        tuple val(family_id), val(sample_id), path("${sample_id}.${chrom}.${ext}"), path("${sample_id}.${chrom}.${ext}.tbi"), emit: merged_chrom
-    
+    tuple val(meta), path("${meta[1]}.${meta[2]}.merged.${meta[3]}"), path("${meta[1]}.${meta[2]}.merged.${meta[3]}.tbi"), emit: merged_file
+
     script:
+    def out_file = "${meta[1]}.${meta[2]}.merged.${meta[3]}"
     """
-    ls -1 *.${ext} | sort -V > file_list.txt
-
-    bcftools concat \
-        -a \
-        --file-list file_list.txt \
-        -Oz \
-        -o ${sample_id}.${chrom}.${ext}
-
-    bcftools index -t ${sample_id}.${chrom}.${ext}
+    bcftools concat -a -O z -o ${out_file} \$(echo "${chunk_files}" | tr ' ' '\\n' | sort -V)
+    bcftools index -t ${out_file}
     """
+    
 
     stub:
     """
-    touch ${sample_id}.${chrom}.${ext}
-    touch ${sample_id}.${chrom}.${ext}.tbi
+    touch ${meta[1]}.${meta[2]}.merged.${meta[3]}
+    touch ${meta[1]}.${meta[2]}.merged.${meta[3]}.tbi
     """
 }
 
