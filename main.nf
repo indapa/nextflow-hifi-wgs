@@ -149,63 +149,63 @@ workflow RUN_TRIO_PIPELINE {
     individual_aligned_bams
 
     main:
-    
+
     // 1. Load all interval BED files from the specified directory
     raw_intervals_ch = channel.fromPath("${params.intervals_dir}/*.bed")
-    // 2. Filter down strictly to chr20 chunks for the PoC
-    intervals_ch = raw_intervals_ch.filter { it.baseName =~ /^chr([1-9]|1[0-9]|2[0-2]|[XY])_/ }
-    
+
+    // 2. Filter to autosomes + X/Y chunks
+    intervals_ch = raw_intervals_ch.filter { f -> f.baseName =~ /^chr([1-9]|1[0-9]|2[0-2]|[XY])_/ }
+
     // =========================================================================
-    // DYNAMIC TESTING HOOK: Pre-calculate how many chunks exist per chromosome.
-    // This stops groupTuple from hanging while waiting for the entire genome!
+    // Pre-calculate how many chunks exist per chromosome so groupTuple can
+    // emit eagerly via groupKey without waiting for the entire channel to close.
     // =========================================================================
     def counts_by_chrom = [:]
-    java.nio.file.Files.list(java.nio.file.Paths.get(params.intervals_dir)).forEach { p ->
-        def name = p.getFileName().toString()
+    file(params.intervals_dir).list().each { name ->
         if (name.endsWith(".bed") && name.startsWith("chr")) {
             def chrom = name.split('_')[0]
             counts_by_chrom[chrom] = (counts_by_chrom[chrom] ?: 0) + 1
         }
     }
 
-
-    // combine trio tuple with each interval BED file to create a scatter input channel
+    // Combine trio tuple with each interval BED file to create a scatter input channel
     slicing_matrix_ch = trio_bams_assembled.combine(intervals_ch)
-    print "DEBUG: trio interval slice  channel contents:"
+
+    log.info "DEBUG: trio interval slice channel contents:"
     slicing_matrix_ch.view { fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai, interval_bed ->
-        return "Family: ${fam}, Child: ${c_id}, ${c_bam}, ${c_bai},${p1_id}, ${p1_bam}, ${p1_bai}, ${p2_id}, ${p2_bam}, ${p2_bai}, Interval: ${interval_bed.baseName}"
+        return "Family: ${fam}, Child: ${c_id}, ${c_bam}, ${c_bai}, ${p1_id}, ${p1_bam}, ${p1_bai}, ${p2_id}, ${p2_bam}, ${p2_bai}, Interval: ${interval_bed.baseName}"
     }
+
     slice_trio_bams_by_interval(slicing_matrix_ch)
 
-    // view the output of the sliced trio BAMs
-    //slice_trio_bams_by_interval.out.sliced_trio_package.view { fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai, interval_bed ->
-    //    return "Sliced Family: ${fam}, Child: ${c_id}, ${c_bam}, ${c_bai},${p1_id}, ${p1_bam}, ${p1_bai}, ${p2_id}, ${p2_bam}, ${p2_bai}, Interval: ${interval_bed.baseName}"
-    
-
-    
     // Run DeepTrio (Scatter)
     deeptrio_wgs_by_chrom(
         file(params.reference),
         file(params.reference_index),
         slice_trio_bams_by_interval.out.sliced_trio_package
     )
-    
+
     all_chunks_ch = channel.empty()
         .mix(
-            deeptrio_wgs_by_chrom.out.child_gvcf.map{ fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
-            deeptrio_wgs_by_chrom.out.p1_gvcf.map   { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
-            deeptrio_wgs_by_chrom.out.p2_gvcf.map   { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
-            deeptrio_wgs_by_chrom.out.p1_vcf.map    { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'vcf.gz'],   f, t ] },
-            deeptrio_wgs_by_chrom.out.p2_vcf.map    { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'vcf.gz'],   f, t ] }
+            deeptrio_wgs_by_chrom.out.child_gvcf.map { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
+            deeptrio_wgs_by_chrom.out.p1_gvcf.map    { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
+            deeptrio_wgs_by_chrom.out.p2_gvcf.map    { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
+            deeptrio_wgs_by_chrom.out.p1_vcf.map     { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'vcf.gz'],   f, t ] },
+            deeptrio_wgs_by_chrom.out.p2_vcf.map     { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'vcf.gz'],   f, t ] }
         )
 
-    // Group chunks dynamically by reading the pre-calculated size for that specific chromosome!
+    // Group chunks using groupKey for eager per-chromosome emission
     grouped_chrom_chunks = all_chunks_ch
-        .map { meta, f, t -> tuple(meta, f, t) }
-        .groupTuple(by: 0, size: { meta -> counts_by_chrom[meta[2]] })
+        .map { meta, f, t ->
+            def chrom = meta[2]
+            def key = groupKey(meta, counts_by_chrom[chrom])
+            tuple(key, f, t)
+        }
+        .groupTuple()
 
-    // Execute one single reusable process for all variants and family roles!
+    // Concatenate per-chromosome chunks
     concat_chrom_chunks_vcf(grouped_chrom_chunks)
+
 
     // assembly GLNexus input
     /*
