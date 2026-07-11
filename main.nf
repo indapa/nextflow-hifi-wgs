@@ -153,7 +153,21 @@ workflow RUN_TRIO_PIPELINE {
     // 1. Load all interval BED files from the specified directory
     raw_intervals_ch = channel.fromPath("${params.intervals_dir}/*.bed")
     // 2. Filter down strictly to chr20 chunks for the PoC
-    intervals_ch = raw_intervals_ch.filter { f-> f.baseName =~ /^chr20_/ }
+    intervals_ch = raw_intervals_ch.filter { it.baseName =~ /^chr([1-9]|1[0-9]|2[0-2]|[XY])_/ }
+    
+    // =========================================================================
+    // DYNAMIC TESTING HOOK: Pre-calculate how many chunks exist per chromosome.
+    // This stops groupTuple from hanging while waiting for the entire genome!
+    // =========================================================================
+    def counts_by_chrom = [:]
+    java.nio.file.Files.list(java.nio.file.Paths.get(params.intervals_dir)).forEach { p ->
+        def name = p.getFileName().toString()
+        if (name.endsWith(".bed") && name.startsWith("chr")) {
+            def chrom = name.split('_')[0]
+            counts_by_chrom[chrom] = (counts_by_chrom[chrom] ?: 0) + 1
+        }
+    }
+
 
     // combine trio tuple with each interval BED file to create a scatter input channel
     slicing_matrix_ch = trio_bams_assembled.combine(intervals_ch)
@@ -185,10 +199,10 @@ workflow RUN_TRIO_PIPELINE {
             deeptrio_wgs_by_chrom.out.p2_vcf.map    { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'vcf.gz'],   f, t ] }
         )
 
-    // Group the 2Mb fragments up by their distinct chromosome
+    // Group chunks dynamically by reading the pre-calculated size for that specific chromosome!
     grouped_chrom_chunks = all_chunks_ch
         .map { meta, f, t -> tuple(meta, f, t) }
-        .groupTuple(by: 0) // Groups files sharing the exact same [fam, id, chrom, type]
+        .groupTuple(by: 0, size: { meta -> counts_by_chrom[meta[2]] })
 
     // Execute one single reusable process for all variants and family roles!
     concat_chrom_chunks_vcf(grouped_chrom_chunks)
