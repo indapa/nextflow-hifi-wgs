@@ -194,16 +194,16 @@ workflow RUN_TRIO_PIPELINE {
             deeptrio_wgs_by_chrom.out.p2_vcf.map     { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'vcf.gz'],   f, t ] }
         )
 
-    // Group chunks using groupKey for eager per-chromosome emission
+    // Group chunks safely using the exact unique metadata profile
     grouped_chrom_chunks = all_chunks_ch
         .map { meta, f, t ->
-            def chrom = meta[2]
-            def key = groupKey(meta, counts_by_chrom[chrom])
-            tuple(key, f, t)
+            // Pass the literal meta array [fam, id, chrom, type] directly
+            tuple(meta, f, t)
         }
-        .groupTuple()
+        // Group by index 0 (the meta array) so samples never cross-contaminate
+        .groupTuple(by: 0)
 
-    // Concatenate per-chromosome chunks
+    // Concatenate per-chromosome chunks safely
     concat_chrom_chunks_vcf(grouped_chrom_chunks)
 
 
