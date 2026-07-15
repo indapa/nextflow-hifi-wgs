@@ -98,10 +98,14 @@ workflow WGS_TRIO {
         return tuple(fam, c.id, c.bam, c.bai, p1.id, p1.bam, p1.bai, p2.id, p2.bam, p2.bai)
     }
 
+
+    sample_roles_ch = channel.fromPath(params.trio_aligned_samplesheet)
+        .splitCsv(header: true)
+        .map { row -> tuple(row.sample_id, row.role) }
     // Isolate single aligned BAM trackers for downstream tools (Sawfish/HiPhase)
     individual_aligned_bams = pbmm2_align.out.aligned_bam
 
-    RUN_TRIO_PIPELINE(trio_bams_assembled, individual_aligned_bams)
+    RUN_TRIO_PIPELINE(trio_bams_assembled, individual_aligned_bams, sample_roles_ch)
 }
 
 // --- Entrypoint 2: Starts from Pre-Aligned BAMs ---
@@ -132,12 +136,16 @@ workflow WGS_TRIO_ALIGNED {
             return tuple(fam, c.id, c.bam, c.bai, p1.id, p1.bam, p1.bai, p2.id, p2.bam, p2.bai)
         }
 
+    sample_roles_ch = channel.fromPath(params.trio_aligned_samplesheet)
+        .splitCsv(header: true)
+        .map { row -> tuple(row.sample_id, row.role) }
+
     // Reconstruct flat stream of individual aligned BAMs for downstream hooks
     individual_aligned_bams = channel.fromPath(params.trio_aligned_samplesheet)
         .splitCsv(header: true)
         .map { row -> tuple(row.sample_id, file(row.aligned_bam), file(row.aligned_bai)) }
 
-    RUN_TRIO_PIPELINE(trio_bams_assembled, individual_aligned_bams)
+    RUN_TRIO_PIPELINE(trio_bams_assembled, individual_aligned_bams, sample_roles_ch)
 }
 
 // =========================================================================
@@ -148,6 +156,7 @@ workflow RUN_TRIO_PIPELINE {
     take:
     trio_bams_assembled
     individual_aligned_bams
+    sample_roles_ch
 
     main:
 
@@ -229,20 +238,45 @@ workflow RUN_TRIO_PIPELINE {
             wgs_input_ch.map { _tuple, ext -> ext }
         )
 
-    // assembly GLNexus input
-    /*
-    // 1. Strip out the unique sample_ids so we can join strictly by family_id
-    child_g_track = child_gvcf_merged.map { fam, _id, v, t -> tuple(fam, v, t) }
-    p1_g_track    = p1_gvcf_merged.map    { fam, _id, v, t -> tuple(fam, v, t) }
-    p2_g_track    = p2_gvcf_merged.map    { fam, _id, v, t -> tuple(fam, v, t) }
+        // This turns:  [family_id, sample_id, file, tbi]
+        // Into:        [sample_id, family_id, file, tbi]
+        prep_concat_ch = concat_wgs_vcf.out.merged
+            .map { family_id, sample_id, file, tbi -> 
+            tuple(sample_id, family_id, file, tbi) 
+        }
+    
+    glnexus_input_ch = prep_concat_ch
+        .join(sample_roles_ch, by: 0) // Joins on index 0 (sample_id)
+        // Resulting tuple: [sample_id, family_id, file, tbi, role]
+    
+        // Filter: Only process the g.vcf.gz files for GLnexus
+        .filter { _sample_id, _family_id, file, _tbi, _role -> file.name.endsWith('.g.vcf.gz') }
+    
+        // Map: Group on family_id, keeping role and files together
+        .map { _sample_id, family_id, file, tbi, role ->
+            tuple(family_id, [role: role, gvcf: file, tbi: tbi])
+        }
+        .groupTuple(by: 0) // Groups all 3 members on family_id
+    
+        // Final Map: Structure explicitly by role for GLnexus
+        .map { family_id, sample_list ->
+            def child   = sample_list.find { member -> member.role == 'child' }
+            def parent1 = sample_list.find { member -> member.role == 'parent1' }
+            def parent2 = sample_list.find { member -> member.role == 'parent2' }
 
-    // 2. Multi-join the streams into a single synchronous 7-element tuple:
-    // [ family_id, child_gvcf, child_tbi, p1_gvcf, p1_tbi, p2_gvcf, p2_tbi ]
-    glnexus_input_ch = child_g_track
-        .join(p1_g_track)
-        .join(p2_g_track)
+        return tuple(
+            family_id,
+            child.gvcf,   child.tbi,
+            parent1.gvcf, parent1.tbi,
+            parent2.gvcf, parent2.tbi
+        )
+    }
 
-    glnexus_trio_merge(glnexus_input_ch)
+    // print the glnexus_input_ch for debugging
+    glnexus_input_ch.view { family_id, c_gvcf, c_tbi, p1_gvcf, p1_tbi, p2_gvcf, p2_tbi ->
+        return "Family: ${family_id}, Child GVCF: ${c_gvcf}, Parent1 GVCF: ${p1_gvcf}, Parent2 GVCF: ${p2_gvcf}"
+    }
+   //glnexus_trio_merge(glnexus_input_ch)
 
     /*
     // Assemble WhatsHap Input: Join joint VCF with our complete family structure channel
