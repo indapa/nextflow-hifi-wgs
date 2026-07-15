@@ -205,7 +205,6 @@ process concat_chrom_chunks_vcf {
     tag { "${meta[0]} - ${meta[1]} - ${meta[2]} (${meta[3]})" }
     publishDir { "${params.deepvariant_output_dir}/DV_trio/${meta[0]}/by_chrom/${meta[2]}" }, mode: 'copy', overwrite: true
 
-
     container "community.wave.seqera.io/library/bcftools:1.21--4335bec1d7b44d11"
 
     input:
@@ -216,11 +215,25 @@ process concat_chrom_chunks_vcf {
 
     script:
     def out_file = "${meta[1]}.${meta[2]}.merged.${meta[3]}"
+    def sample_id = meta[1] // e.g. HG003
+    
+    // 1. Sort files natively in Groovy to guarantee genomic order
+    def sorted_chunks = chunk_files.sort { a, b -> a.name <=> b.name }
     """
-    bcftools concat -a -O z -o ${out_file} \$(echo "${chunk_files}" | tr ' ' '\\n' | sort -V)
+    echo "${sample_id}" > correct_sample.txt
+    mkdir -p sanitized/
+
+    # 2. Use a simple xargs or parallelized structure to blanket reheader everything
+    # This safely forces every file—whether healthy or "default"—to have the exact same sample name
+    for f in ${sorted_chunks.join(' ')}; do
+        bcftools reheader -s correct_sample.txt "\$f" -o sanitized/"\$f"
+    done
+
+    # 3. Concatenate the guaranteed-matching chunks natively
+    ls sanitized/*.g.vcf.gz | sort -V > clean_file_list.txt
+    bcftools concat -a -f clean_file_list.txt -O z -o ${out_file}
     bcftools index -t ${out_file}
     """
-    
 
     stub:
     """
