@@ -220,17 +220,22 @@ process concat_chrom_chunks_vcf {
     // 1. Sort files natively in Groovy to guarantee genomic order
     def sorted_chunks = chunk_files.sort { a, b -> a.name <=> b.name }
     """
+    rm -f clean_file_list.txt
     echo "${sample_id}" > correct_sample.txt
     mkdir -p sanitized/
 
-    # 2. Use a simple xargs or parallelized structure to blanket reheader everything
-    # This safely forces every file—whether healthy or "default"—to have the exact same sample name
+    # 1. Loop through the exact array Nextflow gave us, completely ignoring file extensions
     for f in ${sorted_chunks.join(' ')}; do
         bcftools reheader -s correct_sample.txt "\$f" -o sanitized/"\$f"
     done
 
-    # 3. Concatenate the guaranteed-matching chunks natively
-    ls sanitized/*.g.vcf.gz | sort -V > clean_file_list.txt
+    # 2. Re-read the exact same sorted array names out of the sanitized directory 
+    # to guarantee they stay in genomic order without using standard ls wildcards
+    for f in ${sorted_chunks.join(' ')}; do
+        echo "sanitized/\$f" >> clean_file_list.txt
+    done
+
+    # 3. Concatenate and index safely
     bcftools concat -a -f clean_file_list.txt -O z -o ${out_file}
     bcftools index -t ${out_file}
     """
