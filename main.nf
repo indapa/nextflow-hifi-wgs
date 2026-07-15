@@ -9,6 +9,7 @@ include {
     deeptrio_wgs_by_chrom; 
     deepvariant_wgs;
     concat_chrom_chunks_vcf;
+    concat_wgs_vcf
 
 } from './modules/deepvariant'
 include { bam_stats; slice_trio_bams_by_interval; samtools_index } from './modules/samtools'
