@@ -281,15 +281,8 @@ workflow RUN_TRIO_PIPELINE {
             )
         }
 
-    // Print the glnexus_input_ch for debugging
-    glnexus_input_ch.view { family_id, c_gvcf, c_tbi, p1_gvcf, p1_tbi, p2_gvcf, p2_tbi ->
-        return "Family: ${family_id}, Child GVCF: ${c_gvcf}, Parent1 GVCF: ${p1_gvcf}, Parent2 GVCF: ${p2_gvcf}"
-    }
+    
 
-    // print the glnexus_input_ch for debugging
-    glnexus_input_ch.view { family_id, c_gvcf, c_tbi, p1_gvcf, p1_tbi, p2_gvcf, p2_tbi ->
-        return "Family: ${family_id}, Child GVCF: ${c_gvcf}, Parent1 GVCF: ${p1_gvcf}, Parent2 GVCF: ${p2_gvcf}"
-    }
    glnexus_trio_merge(glnexus_input_ch)
 
     /*
