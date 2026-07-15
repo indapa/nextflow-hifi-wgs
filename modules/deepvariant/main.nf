@@ -227,6 +227,7 @@ process concat_chrom_chunks_vcf {
     # 1. Loop through the exact array Nextflow gave us, completely ignoring file extensions
     for f in ${sorted_chunks.join(' ')}; do
         bcftools reheader -s correct_sample.txt "\$f" -o sanitized/"\$f"
+        bcftools index -t sanitized/"\$f"
     done
 
     # 2. Re-read the exact same sorted array names out of the sanitized directory 
