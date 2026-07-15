@@ -206,6 +206,26 @@ workflow RUN_TRIO_PIPELINE {
     // Concatenate per-chromosome chunks safely
     concat_chrom_chunks_vcf(grouped_chrom_chunks)
 
+    // Restructure the output channel to group all chromosomes together per sample/type
+    wgs_input_ch = concat_chrom_chunks_vcf.out.merged_file
+        .map { meta, vcf, tbi ->
+            // meta is: [family_id, sample_id, chrom, ext]
+            // We regroup by: [ family_id, sample_id, ext ]
+            tuple( [meta[0], meta[1], meta[3]], vcf, tbi )
+        }
+        // Group all chromosomes (usually 24 files) under the same key
+        .groupTuple(by: 0)
+        .map { group_key, vcfs, tbis ->
+            // group_key is: [family_id, sample_id, ext]
+            // We split it to match the input signature of concat_wgs_vcf:
+            // tuple(family_id, sample_id, vcfs, tbis) and the separate ext
+            tuple( tuple(group_key[0], group_key[1], vcfs, tbis), group_key[2] )
+        }
+
+        concat_wgs_vcf(
+            wgs_input_ch.map { tuple, ext -> tuple }, 
+            wgs_input_ch.map { tuple, ext -> ext }
+        )
 
     // assembly GLNexus input
     /*

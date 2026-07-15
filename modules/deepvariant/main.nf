@@ -255,27 +255,42 @@ process concat_wgs_vcf {
     container "community.wave.seqera.io/library/bcftools:1.21--4335bec1d7b44d11"
 
     input:
-        tuple val(family_id), val(sample_id),  path(chrom_files), path(tbis)
+        tuple val(family_id), val(sample_id), path(chrom_files), path(tbis)
         val ext // Pass either "vcf.gz" or "g.vcf.gz"
 
     output:
         tuple val(family_id), val(sample_id), path("${sample_id}.${ext}"), path("${sample_id}.${ext}.tbi"), emit: merged
 
     script:
+    // 1. Create a map of staged filenames to make lookups fast and simple
+    // e.g. ["HG003.chr15.merged.g.vcf.gz": "HG003.chr15.merged.g.vcf.gz"]
+    def staged_map = chrom_files.collectEntries { f -> [f.name, f] }
+
+    // 2. Define the desired order of chromosomes
+    def chrom_order = (1..22).collect { "chr${it}" } + ['chrX', 'chrY']
+
+    // 3. Build a list of files that exist in our input, ordered by chromosome
+    def ordered_files = []
+    chrom_order.each { chrom ->
+        // Dynamically find the staged file for this chromosome
+        def matched_file = staged_map.keySet().find { name -> 
+            name.contains(".${chrom}.") && name.endsWith(".${ext}") 
+        }
+        if (matched_file) {
+            ordered_files << matched_file
+        }
+    }
     """
-    for c in chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 \
-             chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 \
-             chr21 chr22 chrX chrY chrM; do
-        if [ -f "${sample_id}.\${c}.${ext}" ]; then
-            echo "${sample_id}.\${c}.${ext}" >> wgs_list.txt
-        fi
-    done
+    rm -f wgs_list.txt
+    
+    # Write the perfectly ordered staged filenames straight to the file list
+    ${ordered_files.collect { "echo '$it' >> wgs_list.txt" }.join('\n')}
 
     # Safe to use --naive here because whole chromosomes do not overlap coordinates
     bcftools concat \
         --naive \
-        --file-list wgs_list.txt \
-        -Oz \
+        -f wgs_list.txt \
+        -O z \
         -o ${sample_id}.${ext}
 
     bcftools index -t ${sample_id}.${ext}
@@ -286,8 +301,6 @@ process concat_wgs_vcf {
     touch ${sample_id}.${ext}
     touch ${sample_id}.${ext}.tbi
     """
-    
-
 }
 
 
