@@ -224,8 +224,8 @@ workflow RUN_TRIO_PIPELINE {
         }
 
         concat_wgs_vcf(
-            wgs_input_ch.map { tuple, ext -> tuple }, 
-            wgs_input_ch.map { tuple, ext -> ext }
+            wgs_input_ch.map { tuple, _ext -> tuple }, 
+            wgs_input_ch.map { _tuple, ext -> ext }
         )
 
     // assembly GLNexus input

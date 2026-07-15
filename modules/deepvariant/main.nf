@@ -267,7 +267,7 @@ process concat_wgs_vcf {
     def staged_map = chrom_files.collectEntries { f -> [f.name, f] }
 
     // 2. Define the desired order of chromosomes
-    def chrom_order = (1..22).collect { "chr${it}" } + ['chrX', 'chrY']
+    def chrom_order = (1..22).collect { num -> "chr${num}" } + ['chrX', 'chrY']
 
     // 3. Build a list of files that exist in our input, ordered by chromosome
     def ordered_files = []
@@ -284,8 +284,7 @@ process concat_wgs_vcf {
     rm -f wgs_list.txt
     
     # Write the perfectly ordered staged filenames straight to the file list
-    ${ordered_files.collect { "echo '$it' >> wgs_list.txt" }.join('\n')}
-
+    ${ordered_files.collect { file -> "echo '$file' >> wgs_list.txt" }.join('\n')}
     # Safe to use --naive here because whole chromosomes do not overlap coordinates
     bcftools concat \
         --naive \
