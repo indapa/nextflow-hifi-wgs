@@ -192,7 +192,8 @@ workflow RUN_TRIO_PIPELINE {
             deeptrio_wgs_by_chrom.out.p1_gvcf.map    { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
             deeptrio_wgs_by_chrom.out.p2_gvcf.map    { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'g.vcf.gz'], f, t ] },
             deeptrio_wgs_by_chrom.out.p1_vcf.map     { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'vcf.gz'],   f, t ] },
-            deeptrio_wgs_by_chrom.out.p2_vcf.map     { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'vcf.gz'],   f, t ] }
+            deeptrio_wgs_by_chrom.out.p2_vcf.map     { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'vcf.gz'],   f, t ] },
+            deeptrio_wgs_by_chrom.out.child_vcf.map  { fam, id, bed, f, t -> [ [fam, id, file(bed).baseName.split('_')[0], 'vcf.gz'],   f, t ] }
         )
 
     // Group chunks safely using the exact unique metadata profile
