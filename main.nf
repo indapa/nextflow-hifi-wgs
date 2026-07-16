@@ -238,52 +238,28 @@ workflow RUN_TRIO_PIPELINE {
             wgs_input_ch.map { _tuple, ext -> ext }
         )
 
-        // This turns:  [family_id, sample_id, file, tbi]
-        // Into:        [sample_id, family_id, file, tbi]
-       prep_concat_ch = concat_wgs_vcf.out.merged
+        // 1. Prepare and enforce String-type key for the join
+        prep_concat_ch = concat_wgs_vcf.out.merged
         .map { family_id, sample_id, file, tbi -> 
-            tuple(sample_id, family_id, file, tbi) 
+            tuple(sample_id.toString(), family_id, file, tbi) 
         }
+
+    // 2. Ensure sample_roles_ch also uses clean String keys
+    // (Ensure sample_roles_ch emits [sample_id.toString(), role] upstream)
 
     glnexus_input_ch = prep_concat_ch
         .join(sample_roles_ch, by: 0) // Joins on index 0 (sample_id)
-        // Resulting tuple: [sample_id, family_id, file, tbi, role]
-
-        // Filter: Only process the g.vcf.gz files for GLnexus
-        .filter { _sample_id, _family_id, file, _tbi, _role -> file.name.endsWith('.g.vcf.gz') }
-
-        // Map: Group on family_id, keeping role and files together
-        .map { _sample_id, family_id, file, tbi, role ->
-            tuple(family_id, [role: role, gvcf: file, tbi: tbi])
-        }
-        // Force Nextflow to wait until all 3 family members are collected
-        .groupTuple(by: 0, size: 3) 
-
-        // Final Map: Structure explicitly by role for GLnexus with safety checks
-        .map { family_id, sample_list ->
-            def child   = sample_list.find { member -> member.role == 'child' }
-            def parent1 = sample_list.find { member -> member.role == 'parent1' }
-            def parent2 = sample_list.find { member -> member.role == 'parent2' }
-
-            // Safe Check: If any member is missing, throw a crystal-clear error with details
-            if (!child || !parent1 || !parent2) {
-                def found_roles = sample_list.collect { member -> member.role }
-                error "glnexus_trio_merge input construction failed for family '${family_id}'. " +
-                      "Expected 'child', 'parent1', and 'parent2', but only found roles: ${found_roles}. " +
-                      "Please verify that all 3 samples are present in your samplesheet and successfully finished the upstream concat step."
-            }
-
-            return tuple(
-                family_id,
-                child.gvcf,   child.tbi,
-                parent1.gvcf, parent1.tbi,
-                parent2.gvcf, parent2.tbi
-            )
-        }
-
+        
     
+    
+    // view glnexus_trio_merge input channel for debugging
 
-   glnexus_trio_merge(glnexus_input_ch)
+  glnexus_input_ch.view { row ->
+    return "DEBUG: GLnexus input - Sample: ${row[0]}, Family: ${row[1]}"
+}
+    
+    //glnexus_trio_merge(glnexus_input_ch)
+    
 
     /*
     // Assemble WhatsHap Input: Join joint VCF with our complete family structure channel
