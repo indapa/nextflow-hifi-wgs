@@ -181,10 +181,10 @@ workflow RUN_TRIO_PIPELINE {
     // Combine trio tuple with each interval BED file to create a scatter input channel
     slicing_matrix_ch = trio_bams_assembled.combine(intervals_ch)
 
-    log.info "DEBUG: trio interval slice channel contents:"
-    slicing_matrix_ch.view { fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai, interval_bed ->
-        return "Family: ${fam}, Child: ${c_id}, ${c_bam}, ${c_bai}, ${p1_id}, ${p1_bam}, ${p1_bai}, ${p2_id}, ${p2_bam}, ${p2_bai}, Interval: ${interval_bed.baseName}"
-    }
+    //log.info "DEBUG: trio interval slice channel contents:"
+    //slicing_matrix_ch.view { fam, c_id, c_bam, c_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai, interval_bed ->
+    //    return "Family: ${fam}, Child: ${c_id}, ${c_bam}, ${c_bai}, ${p1_id}, ${p1_bam}, ${p1_bai}, ${p2_id}, ${p2_bam}, ${p2_bai}, Interval: ${interval_bed.baseName}"
+    //}
 
     slice_trio_bams_by_interval(slicing_matrix_ch)
 
@@ -238,8 +238,16 @@ workflow RUN_TRIO_PIPELINE {
             wgs_input_ch.map { _tuple, ext -> ext }
         )
 
-        // 1. Prepare and enforce String-type key for the join
-        prep_concat_ch = concat_wgs_vcf.out.merged
+        concat_wgs_vcf.out.merged
+        .branch { family_id, sample_id, file, tbi ->
+            // Inspect the actual file name/extension dynamically
+            vcf:  file.name.endsWith('vcf.gz') && !file.name.endsWith('g.vcf.gz')
+            gvcf: file.name.endsWith('g.vcf.gz')
+        }
+        .set { split_concat_ch }
+        
+    // 1. Prepare and enforce String-type key for the join
+    prep_concat_ch = split_concat_ch.gvcf
         .map { family_id, sample_id, file, tbi -> 
             tuple(sample_id.toString(), family_id, file, tbi) 
         }
@@ -254,16 +262,43 @@ workflow RUN_TRIO_PIPELINE {
     
     // view glnexus_trio_merge input channel for debugging
 
-  glnexus_input_ch.view { row ->
-    return "DEBUG: GLnexus input - Sample: ${row[0]}, Family: ${row[1]}"
-}
-    
-    //glnexus_trio_merge(glnexus_input_ch)
-    
+  //glnexus_input_ch.view { sample_id, family_id, vcf, tbi, role ->
+  //     return "DEBUG: GLnexus Input - Sample: ${sample_id}, Family: ${family_id}, Role: ${role}, VCF: ${vcf}, TBI: ${tbi}"
+  //}
 
-    /*
-    // Assemble WhatsHap Input: Join joint VCF with our complete family structure channel
-    whatshap_input_ch = glnexus_trio_merge.out.joint_vcf.join(trio_bams_assembled)
+    
+    glnexus_input_ch
+    .map { sample_id, family_id, vcf, tbi, role ->
+        // Reposition family_id as the key, and bundle the details as a map
+        tuple(family_id, [role: role, vcf: vcf, tbi: tbi])
+    }
+    .groupTuple(by: 0) // Groups all 3 family members together
+    .map { family_id, members ->
+        // Extract the files by finding the matching role in the grouped list
+        def child   = members.find { it.role == 'child' }
+        def parent1 = members.find { it.role == 'parent1' }
+        def parent2 = members.find { it.role == 'parent2' }
+
+        // Emit the exact structure your process input expects:
+        // tuple val(family_id), path(child_gvcf), path(child_tbi), path(p1_gvcf), path(p1_tbi), path(p2_gvcf), path(p2_tbi)
+        tuple(
+            family_id,
+            child.vcf,   child.tbi,
+            parent1.vcf, parent1.tbi,
+            parent2.vcf, parent2.tbi
+        )
+    }
+    .set { glnexus_prepared_ch }
+
+    //glnexus_prepared_ch.view()
+    
+    glnexus_trio_merge(glnexus_prepared_ch)
+    
+    whatshap_input_ch = glnexus_trio_merge.out.joint_vcf
+    .join(trio_bams_assembled, by: 0)
+
+
+    
     
 
     whatshap_trio_phase(
@@ -272,18 +307,37 @@ workflow RUN_TRIO_PIPELINE {
         whatshap_input_ch
     )
 
-    // Prepare HiPhase input tracking for Parents 
-    parent_vcfs_ch = p1_vcf_merged.mix(p2_vcf_merged)
-        .map { _fam, sample_id, vcf, tbi -> tuple(sample_id, vcf, tbi) }
+ 
+   hiphase_parents_input_ch = split_concat_ch.vcf
+    .map { family_id, sample_id, file, tbi ->
+        // Key by sample_id to join with individual BAMs (4 elements in signature)
+        tuple(sample_id.toString(), file, tbi)
+    }
+    // Join with your individual BAMs by sample_id (index 0)
+    .join(individual_aligned_bams, by: 0) // -> [sample_id, vcf, tbi, bam, bai]
+    // Join with roles to find parent1 and parent2
+    .join(sample_roles_ch, by: 0)         // -> [sample_id, vcf, tbi, bam, bai, role]
+    // Keep only the parents
+    .filter { sample_id, vcf, tbi, bam, bai, role -> 
+        role == 'parent1' || role == 'parent2' 
+    }
+    // Drop the role to match HiPhase's exact input tuple
+    .map { sample_id, vcf, tbi, bam, bai, role -> 
+        tuple(sample_id, vcf, tbi, bam, bai) 
+    }
 
-    hiphase_input_ch = parent_vcfs_ch.join(individual_aligned_bams)
+   hiphase_parents_input_ch.view { sample_id, vcf, tbi, bam, bai ->
+       return "DEBUG: HiPhase Input - Parent Sample: ${sample_id} | VCF: ${vcf.name}  TBI: ${tbi.name} | BAM: ${bam.name} | BAI : ${bai.name}"
+   }
 
+
+     
     hiphase_small_variants(
-        hiphase_input_ch,        
+        hiphase_parents_input_ch,        
         file(params.reference),        
         file(params.reference_index)   
     )
-
+    
     // Reconstruct Child ID track mapping to align filename context for Samtools Index
     child_bam_ch = whatshap_trio_phase.out.haplotagged_bam
         .map { bam -> tuple(bam.baseName.replaceAll(/\.haplotagged/, ''), bam) }
@@ -294,6 +348,10 @@ workflow RUN_TRIO_PIPELINE {
     // Mix parent and child haplotagged streams cleanly
     parent_cpg_input = hiphase_small_variants.out.haplotagged_bam
     all_haplotagged_bams_ch = child_cpg_input.mix(parent_cpg_input)
+    all_haplotagged_bams_ch.view() { sample_id, bam, bai ->
+        return "DEBUG: CpG Input - Sample: ${sample_id} | BAM: ${bam.name} | BAI: ${bai.name}"
+    }
+    
 
     cpg_methylation_calling(
         all_haplotagged_bams_ch,
@@ -301,6 +359,9 @@ workflow RUN_TRIO_PIPELINE {
         file(params.reference_index)
     )
 
+    
+
+    /*
     // QC, Sex inference, and Sawfish Structural Variant Pipeline
     mosdepth_run(individual_aligned_bams)
     infer_sex(mosdepth_run.out.summary)

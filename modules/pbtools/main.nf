@@ -79,16 +79,16 @@ process cpg_methylation_calling {
           path("${sample_id}.combined.bed.gz.tbi"), emit: combined_bed
     tuple val(sample_id),
          path("${sample_id}.hap1.bed.gz"), 
-         path("${sample_id}.hap1.bed.gz.tbi"), emit: hap1_bed
+         path("${sample_id}.hap1.bed.gz.tbi"), emit: hap1_bed, optional: true
     tuple val(sample_id),
             path("${sample_id}.hap2.bed.gz"),
-            path("${sample_id}.hap2.bed.gz.tbi"), emit: hap2_bed
+            path("${sample_id}.hap2.bed.gz.tbi"), emit: hap2_bed, optional: true
     tuple val(sample_id),
             path("${sample_id}.combined.bw"), emit: combined_bw
     tuple val(sample_id),
-            path("${sample_id}.hap1.bw"), emit: hap1_bw
+            path("${sample_id}.hap1.bw"), emit: hap1_bw, optional: true
     tuple val(sample_id),
-            path("${sample_id}.hap2.bw"), emit: hap2_bw
+            path("${sample_id}.hap2.bw"), emit: hap2_bw, optional: true
 
     script:
     """
