@@ -36,9 +36,11 @@ workflow {
         """.stripIndent()
         exit 0
     }
-    
 
-    if (!file(params.samplesheet).exists()) {
+    if (params.entry == 'WGS_TRIO_ALIGNED') {
+        WGS_TRIO_ALIGNED()
+    }   else{
+        if (!file(params.samplesheet).exists()) {
         exit 1, "Samplesheet file not found: ${params.samplesheet}"
     }
 
@@ -60,8 +62,9 @@ workflow {
     POST_ALIGNMENT(
         pbmm2_align.out.aligned_bam
     )
-}
 
+}
+}
 // =========================================================================
 //  WORKFLOW: TRIO ANALYSIS ENTRYPOINTS
 // =========================================================================
@@ -102,10 +105,15 @@ workflow WGS_TRIO {
     sample_roles_ch = channel.fromPath(params.trio_aligned_samplesheet)
         .splitCsv(header: true)
         .map { row -> tuple(row.sample_id, row.role) }
+
+    sample_to_family_ch = channel.fromPath(params.trio_aligned_samplesheet)
+        .splitCsv(header: true)
+        .map { row -> tuple(row.sample_id, row.family_id) }
+
     // Isolate single aligned BAM trackers for downstream tools (Sawfish/HiPhase)
     individual_aligned_bams = pbmm2_align.out.aligned_bam
 
-    RUN_TRIO_PIPELINE(trio_bams_assembled, individual_aligned_bams, sample_roles_ch)
+    RUN_TRIO_PIPELINE(trio_bams_assembled, individual_aligned_bams, sample_roles_ch, sample_to_family_ch)
 }
 
 // --- Entrypoint 2: Starts from Pre-Aligned BAMs ---
@@ -140,12 +148,16 @@ workflow WGS_TRIO_ALIGNED {
         .splitCsv(header: true)
         .map { row -> tuple(row.sample_id, row.role) }
 
+    sample_to_family_ch = channel.fromPath(params.trio_aligned_samplesheet)
+        .splitCsv(header: true)
+        .map { row -> tuple(row.sample_id, row.family_id) }
+
     // Reconstruct flat stream of individual aligned BAMs for downstream hooks
     individual_aligned_bams = channel.fromPath(params.trio_aligned_samplesheet)
         .splitCsv(header: true)
         .map { row -> tuple(row.sample_id, file(row.aligned_bam), file(row.aligned_bai)) }
 
-    RUN_TRIO_PIPELINE(trio_bams_assembled, individual_aligned_bams, sample_roles_ch)
+    RUN_TRIO_PIPELINE(trio_bams_assembled, individual_aligned_bams, sample_roles_ch, sample_to_family_ch)
 }
 
 // =========================================================================
@@ -157,6 +169,7 @@ workflow RUN_TRIO_PIPELINE {
     trio_bams_assembled
     individual_aligned_bams
     sample_roles_ch
+    sample_to_family_ch
 
     main:
 
@@ -359,11 +372,12 @@ workflow RUN_TRIO_PIPELINE {
         file(params.reference_index)
     )
 
-    
 
-    /*
+
+   
     // QC, Sex inference, and Sawfish Structural Variant Pipeline
     mosdepth_run(individual_aligned_bams)
+    
     infer_sex(mosdepth_run.out.summary)
     plot_dist_coverage(mosdepth_run.out.global_dist)
 
@@ -380,8 +394,15 @@ workflow RUN_TRIO_PIPELINE {
         return tuple(sample_id, expected_bed)
     }
 
+    expected_bed_ch.view { sample_id, bed ->
+        return "DEBUG: Expected BED for Sawfish - Sample: ${sample_id} | BED: ${bed.name}"
+    }
+    
     sawfish_in_ch = individual_aligned_bams.join(expected_bed_ch, by: 0)
-
+    sawfish_in_ch.view { sample_id, bam, bai, expected_bed ->
+        return "DEBUG: Sawfish Input - Sample: ${sample_id} | BAM: ${bam.name} | BAI: ${bai.name} | Expected BED: ${expected_bed.name}"
+    }
+   
     sawfish_discover(
         sawfish_in_ch,
         file(params.excluded_bed),
@@ -389,12 +410,22 @@ workflow RUN_TRIO_PIPELINE {
         file(params.reference_index)
     )
 
+    sawfish_discover.out.discover_dir // Emits: [sample_id, discover_dir] (Ensure the process emits sample_id in its tuple)
+    // Join with sample_roles_ch to get the family context
+    // Assuming you have/can make a channel that maps: [sample_id, family_id]
+    .join(sample_to_family_ch, by: 0) // -> [sample_id, discover_dir, family_id]
+    .map { sample_id, discover_dir, family_id ->
+        tuple(family_id, discover_dir)
+    }
+    .groupTuple(by: 0) // Groups all 3 members under the family_id -> [family_id, [dir_child, dir_p1, dir_p2]]
+    .set { sawfish_joint_input_ch }
+
     sawfish_joint_call(
-        sawfish_discover.out.discover_dir.collect()
+        sawfish_joint_input_ch
     )
 
-    */  
 }
+
 
 // =========================================================================
 //  ENTRY POINT: SINGLETON POST-ALIGNMENT ONLY
@@ -487,6 +518,7 @@ workflow POST_ALIGNMENT {
         sawfish_discover.out.discover_dir.collect()
     )
 }
+
 
 
 

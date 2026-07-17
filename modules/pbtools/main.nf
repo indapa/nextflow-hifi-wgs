@@ -131,7 +131,7 @@ process sawfish_discover {
    
        
     output:
-    path "${sample_id}_sawfish_discover", type:'dir', emit: discover_dir
+    tuple val(sample_id), path("${sample_id}_sawfish_discover", type:'dir'), emit: discover_dir
         
     script:
     """
@@ -155,37 +155,37 @@ process sawfish_discover {
 }
 
 process sawfish_joint_call {
+    tag { "${family_id}" }
     
-    publishDir { "${params.sawfish_output_dir}/joint_call" }, mode: 'copy'
+    // Organizes outputs nicely into a family folder
+    publishDir { "${params.sawfish_output_dir}/joint_call/${family_id}" }, mode: 'copy', overwrite: true
     container "quay.io/pacbio/sawfish:2.2.1_build1"
 
     input:
-    // "path" here will accept a List of paths because of .collect()
-    path all_discover_dirs 
-   
+    // Tuple of the family_id and the list of collected discovery directories
+    tuple val(family_id), path(all_discover_dirs)
 
     output:
-    path "sawfish_joint_call_dir", type:'dir', emit: joint_dir
+    // Named after family_id to keep outputs unique and trace-friendly
+    tuple val(family_id), path("${family_id}_sawfish_joint_call_dir", type: 'dir'), emit: joint_dir
 
     script:
-    // Groovy magic: transform the list [dir1, dir2, dir3] 
-    // into the string "--sample dir1 --sample dir2 --sample dir3"
     def sample_args = all_discover_dirs.collect { d -> "--sample $d" }.join(' ')
 
     """
     set -euo pipefail
 
-    echo "Running joint call on ${all_discover_dirs.size()} samples..."
+    echo "Running joint call on ${all_discover_dirs.size()} samples for family ${family_id}..."
 
-    sawfish joint-call \
-        --threads ${task.cpus} \
-        ${sample_args} \
-        --output-dir sawfish_joint_call_dir
+    sawfish joint-call \\
+        --threads ${task.cpus} \\
+        ${sample_args} \\
+        --output-dir ${family_id}_sawfish_joint_call_dir
     """
 
     stub:
     """
-    mkdir -p sawfish_joint_call_dir
+    mkdir -p ${family_id}_sawfish_joint_call_dir
     """
 }
 
