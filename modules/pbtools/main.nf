@@ -96,10 +96,6 @@ process cpg_methylation_calling {
         --bam ${bam} \\
         --output-prefix ${sample_id} \\
         --ref ${ref} \\
-        --pileup-mode model \\
-        --modsites-mode denovo \\
-        --min-mapq 20 \\
-        --min-coverage 10 \\
         --threads ${task.cpus}
     """
 
