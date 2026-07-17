@@ -190,7 +190,9 @@ process deeptrio_wgs_by_chrom {
         --output_gvcf_parent1 ${p1_id}.${interval_bed.baseName}.g.vcf.gz \
         --output_gvcf_parent2 ${p2_id}.${interval_bed.baseName}.g.vcf.gz \
         --num_shards ${task.cpus} \
-        --regions ${interval_bed}
+        --regions ${interval_bed} \
+        --call_variants_extra_args="allow_empty_examples=true"
+
     """
 
     stub:
