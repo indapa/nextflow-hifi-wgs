@@ -318,15 +318,17 @@ process glnexus_trio_merge {
           path(child_gvcf), path(child_tbi), \
           path(p1_gvcf),    path(p1_tbi), \
           path(p2_gvcf),    path(p2_tbi)
+    path glnexus_bed
 
     output:
     tuple val(family_id), path("${family_id}.joint.vcf.gz"), path("${family_id}.joint.vcf.gz.tbi"), emit: joint_vcf
-
+    
     script:
     """
     glnexus_cli \
         --config DeepVariant_unfiltered \
         --threads ${task.cpus} \
+        --bed ${glnexus_bed} \
         ${child_gvcf} \
         ${p1_gvcf} \
         ${p2_gvcf} \

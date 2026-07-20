@@ -77,7 +77,17 @@
         "sawfish_output_dir": {
             "type": "string",
             "default": "s3://embedbio-results/hifi-wgs-output/sawfish2"
+        },
+        "glnexus_bed": {
+            "type": "string",
+            "default": "s3://pacbio-datasets/resources/glnexus/all_contigs.bed"
+        },
+        "fastvep_sa_dir": {
+            "type": "string",
+            "default": "s3://pacbio-datasets/resources/fastvep/SA_files/"
         }
+
+
     },
     "required": [
         

@@ -305,7 +305,7 @@ workflow RUN_TRIO_PIPELINE {
 
     //glnexus_prepared_ch.view()
     
-    glnexus_trio_merge(glnexus_prepared_ch)
+    glnexus_trio_merge(glnexus_prepared_ch, file(params.glnexus_region_bed))
     
     whatshap_input_ch = glnexus_trio_merge.out.joint_vcf
     .join(trio_bams_assembled, by: 0)
