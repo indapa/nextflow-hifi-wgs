@@ -170,19 +170,20 @@ process deeptrio_wgs_by_chrom {
         tuple val(family_id), val(p2_id),    val(interval_bed.baseName), path("${p2_id}.${interval_bed.baseName}.vcf.gz"),     path("${p2_id}.${interval_bed.baseName}.vcf.gz.tbi"),     emit: p2_vcf
         tuple val(family_id), val(p2_id),    val(interval_bed.baseName), path("${p2_id}.${interval_bed.baseName}.g.vcf.gz"),   path("${p2_id}.${interval_bed.baseName}.g.vcf.gz.tbi"),   emit: p2_gvcf
 
-    script:
+script:
     def model_type = task.ext.model_type ?: 'PACBIO'
     """
-    # Create local working scratch for Bazel unpacks to avoid fill-up on root volume
-    mkdir -p ./.tmp
-    export TMPDIR=\$PWD/.tmp
-    export HOME=\$PWD/.tmp
-    export PYTHON_RUNFILES_DIRECTORY=\$PWD/.tmp
-    
-    #prewarm bazel run files to avoid "bazel run" errors in deepvariant
+    mkdir -p /tmp_local/deeptrio_${family_id}_${chrom}
+
+    # 2. Direct Bazel, Python, and system temp files to local instance storage
+    export TMPDIR=/tmp_local/deeptrio_${family_id}_${chrom}
+    export HOME=/tmp_local/deeptrio_${family_id}_${chrom}
+    export PYTHON_RUNFILES_DIRECTORY=/tmp_local/deeptrio_${family_id}_${chrom}
+
+    # 3. Prewarm Bazel runfiles locally
     /opt/deepvariant/bin/deeptrio/make_examples --help > /dev/null 2>&1 || true
-    
-    #now run deeptrio
+
+    # 4. Run DeepTrio, explicitly telling it to write intermediate TFRecords to local disk
     /opt/deepvariant/bin/deeptrio/run_deeptrio \
         --model_type ${model_type} \
         --ref ${ref} \
@@ -200,8 +201,11 @@ process deeptrio_wgs_by_chrom {
         --output_gvcf_parent2 ${p2_id}.${interval_bed.baseName}.g.vcf.gz \
         --num_shards ${task.cpus} \
         --regions ${interval_bed} \
+        --intermediate_results_dir /tmp_local/deeptrio_${family_id}_${chrom}/intermediate \
         --call_variants_extra_args="allow_empty_examples=true"
 
+    # 5. Clean up local disk space upon completion
+    rm -rf /tmp_local/deeptrio_${family_id}_${chrom}
     """
 
     stub:
