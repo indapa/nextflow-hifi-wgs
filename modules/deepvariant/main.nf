@@ -146,7 +146,7 @@ process deeptrio_wgs {
 process deeptrio_wgs_by_chrom {
     tag { "${family_id}_${interval_bed.baseName}" }
     //publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}/by_chrom" }, mode: 'copy', overwrite: true
-
+    fusion.enabled = false
     container "google/deepvariant:deeptrio-1.10.0"
     
     stageInMode 'copy' // avoid virtual file pointers with deep variant

@@ -115,7 +115,7 @@ process CONCAT_PHASED_VCFS {
     """
     ls *.phased.vcf.gz | sort -V > vcf_list.txt
     bcftools concat --file-list vcf_list.txt -Oz -o ${family_id}.trio_phased.vcf.gz
-    bcftools index - vcf ${family_id}.trio_phased.vcf.gz
+    bcftools index -t ${family_id}.trio_phased.vcf.gz
     """
 
     stub:
@@ -140,7 +140,7 @@ process WHATSHAP_STATS_HAPLOTAG {
     path reference_index
 
     output:
-    tuple val(family_id), path("${family_id}.trio_phased.vcf.gz"), emit: phased_vcf
+   
     path "${child_id}.haplotagged.bam", emit: haplotagged_bam
     path "${family_id}.ped", emit: ped_file
     path "${family_id}.blocks.tsv", emit: block_stats
