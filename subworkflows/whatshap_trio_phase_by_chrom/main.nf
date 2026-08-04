@@ -1,7 +1,7 @@
 // subworkflows/local/whatshap_trio_phase_by_chrom/main.nf
-include { WHATSHAP_PHASE_CHROM }    from '../../../modules/whatshap'
-include { CONCAT_PHASED_VCFS }      from '../../../modules/whatshap'
-include { WHATSHAP_STATS_HAPLOTAG } from '../../../modules/whatshap'
+include { WHATSHAP_PHASE_CHROM }    from '../../modules/whatshap'
+include { CONCAT_PHASED_VCFS }      from '../../modules/whatshap'
+include { WHATSHAP_STATS_HAPLOTAG } from '../../modules/whatshap'
 
 workflow WHATSHAP_TRIO_PHASE_BY_CHROM {
     take:
