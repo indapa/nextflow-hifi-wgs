@@ -13,8 +13,11 @@ include {
 
 } from './modules/deepvariant'
 include { bam_stats; slice_trio_bams_by_interval; samtools_index } from './modules/samtools'
-include { whatshap_trio_phase } from './modules/whatshap'
+//include { whatshap_trio_phase } from './modules/whatshap'
+include { WHATSHAP_TRIO_PHASE_BY_CHROM } from './subworkflows/whatshap_trio_phase_by_chrom'
+
 include { mosdepth_run; infer_sex; plot_dist_coverage } from './modules/mosdepth'
+
 
 
 // =========================================================================
@@ -306,18 +309,18 @@ workflow RUN_TRIO_PIPELINE {
     //glnexus_prepared_ch.view()
     
     glnexus_trio_merge(glnexus_prepared_ch, file(params.glnexus_region_bed))
+    ch_chroms = channel.fromList(params.chromosomes)
+
     
     whatshap_input_ch = glnexus_trio_merge.out.joint_vcf
     .join(trio_bams_assembled, by: 0)
 
 
-    
-    
-
-    whatshap_trio_phase(
-        file(params.reference), 
-        file(params.reference_index), 
-        whatshap_input_ch
+    WHATSHAP_TRIO_PHASE_BY_CHROM(
+        ch_trio_input,
+        params.reference,
+        params.reference_index,
+        ch_chroms
     )
 
  
@@ -352,7 +355,7 @@ workflow RUN_TRIO_PIPELINE {
     )
     
     // Reconstruct Child ID track mapping to align filename context for Samtools Index
-    child_bam_ch = whatshap_trio_phase.out.haplotagged_bam
+    child_bam_ch = WHATSHAP_TRIO_PHASE_BY_CHROM.out.haplotagged_bam
         .map { bam -> tuple(bam.baseName.replaceAll(/\.haplotagged/, ''), bam) }
     
     samtools_index(child_bam_ch)
