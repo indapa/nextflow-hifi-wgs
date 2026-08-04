@@ -174,8 +174,13 @@ process deeptrio_wgs_by_chrom {
     script:
     def model_type = task.ext.model_type ?: 'PACBIO'
     """
+    export TMPDIR=/tmp
+    export HOME=/tmp
+    export PYTHON_RUNFILES_DIRECTORY=/tmp
+    
     #prewarm bazel run files to avoid "bazel run" errors in deepvariant
     /opt/deepvariant/bin/deeptrio/make_examples --help > /dev/null 2>&1 || true
+    
     #now run deeptrio
     /opt/deepvariant/bin/deeptrio/run_deeptrio \
         --model_type ${model_type} \
