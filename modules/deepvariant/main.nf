@@ -146,7 +146,6 @@ process deeptrio_wgs {
 process deeptrio_wgs_by_chrom {
     tag { "${family_id}_${interval_bed.baseName}" }
     //publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}/by_chrom" }, mode: 'copy', overwrite: true
-    fusion.enabled = false
     container "google/deepvariant:deeptrio-1.10.0"
     
     stageInMode 'copy' // avoid virtual file pointers with deep variant
@@ -174,9 +173,11 @@ process deeptrio_wgs_by_chrom {
     script:
     def model_type = task.ext.model_type ?: 'PACBIO'
     """
-    export TMPDIR=/tmp
-    export HOME=/tmp
-    export PYTHON_RUNFILES_DIRECTORY=/tmp
+    # Create local working scratch for Bazel unpacks to avoid fill-up on root volume
+    mkdir -p ./.tmp
+    export TMPDIR=\$PWD/.tmp
+    export HOME=\$PWD/.tmp
+    export PYTHON_RUNFILES_DIRECTORY=\$PWD/.tmp
     
     #prewarm bazel run files to avoid "bazel run" errors in deepvariant
     /opt/deepvariant/bin/deeptrio/make_examples --help > /dev/null 2>&1 || true
