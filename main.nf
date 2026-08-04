@@ -317,7 +317,7 @@ workflow RUN_TRIO_PIPELINE {
 
 
     WHATSHAP_TRIO_PHASE_BY_CHROM(
-        ch_trio_input,
+        whatshap_input_ch,
         params.reference,
         params.reference_index,
         ch_chroms
