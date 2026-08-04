@@ -13,7 +13,7 @@ include {
 
 } from './modules/deepvariant'
 include { bam_stats; slice_trio_bams_by_interval; samtools_index } from './modules/samtools'
-//include { whatshap_trio_phase } from './modules/whatshap'
+
 include { WHATSHAP_TRIO_PHASE_BY_CHROM } from './subworkflows/whatshap_trio_phase_by_chrom'
 
 include { mosdepth_run; infer_sex; plot_dist_coverage } from './modules/mosdepth'
