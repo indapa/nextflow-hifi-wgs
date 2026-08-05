@@ -4,7 +4,6 @@
 
 include { pbmm2_align; cpg_methylation_calling; sawfish_discover; sawfish_joint_call; hiphase_small_variants } from './modules/pbtools'
 include { 
-    glnexus_trio_merge; 
     deeptrio_wgs; 
     deeptrio_wgs_by_chrom; 
     deepvariant_wgs;
