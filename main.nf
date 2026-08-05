@@ -15,7 +15,8 @@ include {
 include { bam_stats; slice_trio_bams_by_interval; samtools_index } from './modules/samtools'
 
 include { WHATSHAP_TRIO_PHASE_BY_CHROM } from './subworkflows/whatshap_trio_phase_by_chrom'
-
+include { CONCAT_AND_SPLIT_WGS } from './subworkflows/concat_and_split_wgs'
+include { GLNEXUS_TRIO }         from './subworkflows/glnexus_trio_merge'
 include { mosdepth_run; infer_sex; plot_dist_coverage } from './modules/mosdepth'
 
 
@@ -176,6 +177,12 @@ workflow RUN_TRIO_PIPELINE {
 
     main:
 
+
+    sample_roles_for_hiphase = channel.fromPath(params.trio_aligned_samplesheet)
+        .splitCsv(header: true)
+        .map { row -> tuple(row.sample_id, row.role) }
+
+
     // 1. Load all interval BED files from the specified directory
     raw_intervals_ch = channel.fromPath("${params.intervals_dir}/*.bed")
 
@@ -233,86 +240,21 @@ workflow RUN_TRIO_PIPELINE {
     // Concatenate per-chromosome chunks safely
     concat_chrom_chunks_vcf(grouped_chrom_chunks)
 
-    // Restructure the output channel to group all chromosomes together per sample/type
-    wgs_input_ch = concat_chrom_chunks_vcf.out.merged_file
-        .map { meta, vcf, tbi ->
-            // meta is: [family_id, sample_id, chrom, ext]
-            // We regroup by: [ family_id, sample_id, ext ]
-            tuple( [meta[0], meta[1], meta[3]], vcf, tbi )
-        }
-        // Group all chromosomes (usually 24 files) under the same key
-        .groupTuple(by: 0)
-        .map { group_key, vcfs, tbis ->
-            // group_key is: [family_id, sample_id, ext]
-            // We split it to match the input signature of concat_wgs_vcf:
-            // tuple(family_id, sample_id, vcfs, tbis) and the separate ext
-            tuple( tuple(group_key[0], group_key[1], vcfs, tbis), group_key[2] )
-        }
-
-        concat_wgs_vcf(
-            wgs_input_ch.map { tuple, _ext -> tuple }, 
-            wgs_input_ch.map { _tuple, ext -> ext }
-        )
-
-        concat_wgs_vcf.out.merged
-        .branch { family_id, sample_id, file, tbi ->
-            // Inspect the actual file name/extension dynamically
-            vcf:  file.name.endsWith('vcf.gz') && !file.name.endsWith('g.vcf.gz')
-            gvcf: file.name.endsWith('g.vcf.gz')
-        }
-        .set { split_concat_ch }
-        
-    // 1. Prepare and enforce String-type key for the join
-    prep_concat_ch = split_concat_ch.gvcf
-        .map { family_id, sample_id, file, tbi -> 
-            tuple(sample_id.toString(), family_id, file, tbi) 
-        }
-
-    // 2. Ensure sample_roles_ch also uses clean String keys
-    // (Ensure sample_roles_ch emits [sample_id.toString(), role] upstream)
-
-    glnexus_input_ch = prep_concat_ch
-        .join(sample_roles_ch, by: 0) // Joins on index 0 (sample_id)
-        
+    CONCAT_AND_SPLIT_WGS(
+        concat_chrom_chunks_vcf.out.merged_file,
+        sample_roles_ch
+    )
+    ch_chroms_glnexus = channel.fromList(params.chromosomes)
+    ch_chroms_whatshap = channel.fromList(params.chromosomes)
+    GLNEXUS_TRIO(
+        CONCAT_AND_SPLIT_WGS.out.glnexus_input,
+        ch_chroms_glnexus,
+        file(params.glnexus_region_bed)
+    )
     
-    
-    // view glnexus_trio_merge input channel for debugging
-
-  //glnexus_input_ch.view { sample_id, family_id, vcf, tbi, role ->
-  //     return "DEBUG: GLnexus Input - Sample: ${sample_id}, Family: ${family_id}, Role: ${role}, VCF: ${vcf}, TBI: ${tbi}"
-  //}
 
     
-    glnexus_input_ch
-    .map { sample_id, family_id, vcf, tbi, role ->
-        // Reposition family_id as the key, and bundle the details as a map
-        tuple(family_id, [role: role, vcf: vcf, tbi: tbi])
-    }
-    .groupTuple(by: 0) // Groups all 3 family members together
-    .map { family_id, members ->
-        // Extract the files by finding the matching role in the grouped list
-        def child   = members.find { it.role == 'child' }
-        def parent1 = members.find { it.role == 'parent1' }
-        def parent2 = members.find { it.role == 'parent2' }
-
-        // Emit the exact structure your process input expects:
-        // tuple val(family_id), path(child_gvcf), path(child_tbi), path(p1_gvcf), path(p1_tbi), path(p2_gvcf), path(p2_tbi)
-        tuple(
-            family_id,
-            child.vcf,   child.tbi,
-            parent1.vcf, parent1.tbi,
-            parent2.vcf, parent2.tbi
-        )
-    }
-    .set { glnexus_prepared_ch }
-
-    //glnexus_prepared_ch.view()
-    
-    glnexus_trio_merge(glnexus_prepared_ch, file(params.glnexus_region_bed))
-    ch_chroms = channel.fromList(params.chromosomes)
-
-    
-    whatshap_input_ch = glnexus_trio_merge.out.joint_vcf
+    whatshap_input_ch = GLNEXUS_TRIO.out.joint_vcf
     .join(trio_bams_assembled, by: 0)
 
 
@@ -320,11 +262,11 @@ workflow RUN_TRIO_PIPELINE {
         whatshap_input_ch,
         params.reference,
         params.reference_index,
-        ch_chroms
+        ch_chroms_whatshap
     )
 
  
-   hiphase_parents_input_ch = split_concat_ch.vcf
+   hiphase_parents_input_ch = CONCAT_AND_SPLIT_WGS.out.vcf_merged
     .map { family_id, sample_id, file, tbi ->
         // Key by sample_id to join with individual BAMs (4 elements in signature)
         tuple(sample_id.toString(), file, tbi)
@@ -332,7 +274,7 @@ workflow RUN_TRIO_PIPELINE {
     // Join with your individual BAMs by sample_id (index 0)
     .join(individual_aligned_bams, by: 0) // -> [sample_id, vcf, tbi, bam, bai]
     // Join with roles to find parent1 and parent2
-    .join(sample_roles_ch, by: 0)         // -> [sample_id, vcf, tbi, bam, bai, role]
+    .join(sample_roles_for_hiphase, by: 0)         // -> [sample_id, vcf, tbi, bam, bai, role]
     // Keep only the parents
     .filter { sample_id, vcf, tbi, bam, bai, role -> 
         role == 'parent1' || role == 'parent2' 

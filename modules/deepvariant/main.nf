@@ -319,44 +319,7 @@ process concat_wgs_vcf {
 
 
 
-process glnexus_trio_merge {
-    tag { "${family_id}" }
-    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
-    
-    container "quay.io/mlin/glnexus:v1.2.7"
 
-    input:
-    // Streamlined: Only family ID and the file tracks are needed here
-    tuple val(family_id), \
-          path(child_gvcf), path(child_tbi), \
-          path(p1_gvcf),    path(p1_tbi), \
-          path(p2_gvcf),    path(p2_tbi)
-    path glnexus_bed
-
-    output:
-    tuple val(family_id), path("${family_id}.joint.vcf.gz"), path("${family_id}.joint.vcf.gz.tbi"), emit: joint_vcf
-    
-    script:
-    """
-    glnexus_cli \
-        --config DeepVariant_unfiltered \
-        --threads ${task.cpus} \
-        --bed ${glnexus_bed} \
-        ${child_gvcf} \
-        ${p1_gvcf} \
-        ${p2_gvcf} \
-        | bcftools view - \
-        | bgzip -c > ${family_id}.joint.vcf.gz
-
-    tabix -p vcf ${family_id}.joint.vcf.gz
-    """
-
-    stub:
-    """
-    touch ${family_id}.joint.vcf.gz
-    touch ${family_id}.joint.vcf.gz.tbi
-    """
-}
 
 
 process deepvariant_wgs {
