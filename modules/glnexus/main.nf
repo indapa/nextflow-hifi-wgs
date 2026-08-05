@@ -15,21 +15,37 @@ process glnexus_trio_by_chrom {
     tuple val(family_id), path("${family_id}.${chrom}.joint.vcf.gz"), path("${family_id}.${chrom}.joint.vcf.gz.tbi"), emit: joint_vcf
 
     script:
+    def avail_mem = (task.memory.toGiga() * 0.85).toInteger()
     """
-    # Filter BED to this chromosome only
-    grep -w "${chrom}" ${glnexus_bed} > region.bed
+    set -euo pipefail
 
+    # 1. Filter BED to target chromosome (escaped \$1 for Nextflow string interpolation)
+    awk -v c="${chrom}" '\$1 == c' ${glnexus_bed} > region.bed
+
+    # 2. Run GLnexus directly to binary BCF with explicit memory allocation
     glnexus_cli \
         --config DeepVariant_unfiltered \
         --threads ${task.cpus} \
+        --mem-gbytes ${avail_mem} \
+        --dir "GLnexus_${chrom}.DB" \
         --bed region.bed \
         ${child_gvcf} \
         ${p1_gvcf} \
         ${p2_gvcf} \
-        | bcftools view - \
-        | bgzip -c > ${family_id}.${chrom}.joint.vcf.gz
+        > ${family_id}.${chrom}.joint.bcf
 
-    tabix -p vcf ${family_id}.${chrom}.joint.vcf.gz
+    # 3. Separate conversion step: BCF -> bgzipped VCF
+    bcftools view \
+        --threads ${task.cpus} \
+        -Oz \
+        -o ${family_id}.${chrom}.joint.vcf.gz \
+        ${family_id}.${chrom}.joint.bcf
+
+    # 4. Separate indexing step
+    bcftools index -t --threads ${task.cpus} ${family_id}.${chrom}.joint.vcf.gz
+
+    # 5. Cleanup temporary RocksDB directory and uncompressed BCF
+    rm -rf "GLnexus_${chrom}.DB" "${family_id}.${chrom}.joint.bcf" region.bed
     """
 
     stub:
