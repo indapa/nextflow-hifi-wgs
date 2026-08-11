@@ -12,6 +12,7 @@ include {
 
 } from './modules/deepvariant'
 include { bam_stats; slice_trio_bams_by_interval; samtools_index } from './modules/samtools'
+include { FASTVEP_ANNOTATE_TRIO_VCF } from './modules/fastvep'
 
 include { WHATSHAP_TRIO_PHASE_BY_CHROM } from './subworkflows/whatshap_trio_phase_by_chrom'
 include { CONCAT_AND_SPLIT_WGS } from './subworkflows/concat_and_split_wgs'
@@ -263,6 +264,21 @@ workflow RUN_TRIO_PIPELINE {
         params.reference_index,
         ch_chroms_whatshap
     )
+
+
+    // annotate the phased VCF with FASTVEP
+    ch_gff3     = channel.fromPath(params.fastvep_gff)
+    ch_fasta    = channel.fromPath(params.reference)
+    ch_sa_files = channel.fromPath("${params.fastvep_sa_dir}/**").collect()
+
+    FASTVEP_ANNOTATE_TRIO_VCF(
+        WHATSHAP_TRIO_PHASE_BY_CHROM.out.phased_vcf,
+        ch_gff3,
+        ch_fasta,
+        ch_sa_files
+    )
+
+ 
 
  
    hiphase_parents_input_ch = CONCAT_AND_SPLIT_WGS.out.vcf_merged
