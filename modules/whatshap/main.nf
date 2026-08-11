@@ -114,7 +114,7 @@ process CONCAT_PHASED_VCFS {
     script:
     """
     ls *.phased.vcf.gz | sort -V > vcf_list.txt
-    bcftools concat --file-list vcf_list.txt -Oz -o ${family_id}.trio_phased.vcf.gz
+    bcftools concat -a --file-list vcf_list.txt | bcftools sort -Oz -o ${family_id}.trio_phased.vcf.gz
     bcftools index -t ${family_id}.trio_phased.vcf.gz
     """
 
