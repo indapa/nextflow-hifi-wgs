@@ -10,14 +10,14 @@ workflow GLNEXUS_TRIO {
     main:
     // Regroup by family, extracting role-tagged file maps
     glnexus_prepared_ch = glnexus_input_ch
-        .map { sample_id, family_id, vcf, tbi, role ->
+        .map { _sample_id, family_id, vcf, tbi, role ->
             tuple(family_id, [role: role, vcf: vcf, tbi: tbi])
         }
         .groupTuple(by: 0)
         .map { family_id, members ->
-            def child   = members.find { it.role == 'child' }
-            def parent1 = members.find { it.role == 'parent1' }
-            def parent2 = members.find { it.role == 'parent2' }
+            def child   = members.find { member -> member.role == 'child' }
+            def parent1 = members.find { member -> member.role == 'parent1'}
+            def parent2 = members.find { member -> member.role == 'parent2'}
 
             tuple(
                 family_id,
@@ -43,5 +43,5 @@ workflow GLNEXUS_TRIO {
     concat_glnexus_vcf(concat_input_ch)
 
     emit:
-    joint_vcf = concat_glnexus_vcf.out.merged  // tuple( family_id, joint.vcf.gz, joint.vcf.gz.tbi )
+    concat_glnexus_vcf.out.merged  // tuple( family_id, joint.vcf.gz, joint.vcf.gz.tbi )
 }

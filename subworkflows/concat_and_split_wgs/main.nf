@@ -29,7 +29,7 @@ workflow CONCAT_AND_SPLIT_WGS {
 
     // Branch merged output by file extension
     concat_wgs_vcf.out.merged
-        .branch { family_id, sample_id, file, tbi ->
+        .branch { _family_id, _sample_id, file, _tbi ->
             vcf:  file.name.endsWith('vcf.gz') && !file.name.endsWith('g.vcf.gz')
             gvcf: file.name.endsWith('g.vcf.gz')
         }

@@ -17,6 +17,7 @@ include { FASTVEP_ANNOTATE_TRIO_VCF } from './modules/fastvep'
 include { WHATSHAP_TRIO_PHASE_BY_CHROM } from './subworkflows/whatshap_trio_phase_by_chrom'
 include { CONCAT_AND_SPLIT_WGS } from './subworkflows/concat_and_split_wgs'
 include { GLNEXUS_TRIO }         from './subworkflows/glnexus_trio_merge'
+include { PBMM2_ALIGN} from './subworkflows/reference_alignment'
 include { mosdepth_run; infer_sex; plot_dist_coverage } from './modules/mosdepth'
 
 
@@ -57,14 +58,14 @@ workflow {
         }
 
     /* read alignment */
-    pbmm2_align(
+    PBMM2_ALIGN(
         file(params.reference),
-        input_bams_ch,
+        input_bams_ch
     )
 
     /* post alignment */
     POST_ALIGNMENT(
-        pbmm2_align.out.aligned_bam
+        PBMM2_ALIGN.out
     )
 
 }
@@ -88,11 +89,13 @@ workflow WGS_TRIO {
         }
 
     align_input_ch = raw_samples_ch.map { _fam, sample_id, _role, bam -> tuple(sample_id, bam) }
-    pbmm2_align(file(params.reference), align_input_ch)
-
+    PBMM2_ALIGN(
+        file(params.reference),
+        align_input_ch
+    )
     trio_bams_assembled = raw_samples_ch
         .map { fam, sample_id, role, _raw_bam -> tuple(sample_id, fam, role) }
-        .join(pbmm2_align.out.aligned_bam)
+        .join(PBMM2_ALIGN.out)
         .map { sample_id, fam, role, bam, bai -> 
             tuple(fam, [role: role, id: sample_id, bam: bam, bai: bai]) 
         }
@@ -254,7 +257,7 @@ workflow RUN_TRIO_PIPELINE {
     
 
     
-    whatshap_input_ch = GLNEXUS_TRIO.out.joint_vcf
+    whatshap_input_ch = GLNEXUS_TRIO.out
     .join(trio_bams_assembled, by: 0)
 
 
@@ -282,7 +285,7 @@ workflow RUN_TRIO_PIPELINE {
 
  
    hiphase_parents_input_ch = CONCAT_AND_SPLIT_WGS.out.vcf_merged
-    .map { family_id, sample_id, file, tbi ->
+    .map { _family_id, sample_id, file, tbi ->
         // Key by sample_id to join with individual BAMs (4 elements in signature)
         tuple(sample_id.toString(), file, tbi)
     }
@@ -291,11 +294,11 @@ workflow RUN_TRIO_PIPELINE {
     // Join with roles to find parent1 and parent2
     .join(sample_roles_for_hiphase, by: 0)         // -> [sample_id, vcf, tbi, bam, bai, role]
     // Keep only the parents
-    .filter { sample_id, vcf, tbi, bam, bai, role -> 
+    .filter { _sample_id, _vcf, _tbi, _bam, _bai, role -> 
         role == 'parent1' || role == 'parent2' 
     }
     // Drop the role to match HiPhase's exact input tuple
-    .map { sample_id, vcf, tbi, bam, bai, role -> 
+    .map { sample_id, vcf, tbi, bam, bai, _role -> 
         tuple(sample_id, vcf, tbi, bam, bai) 
     }
 
@@ -374,7 +377,7 @@ workflow RUN_TRIO_PIPELINE {
     // Join with sample_roles_ch to get the family context
     // Assuming you have/can make a channel that maps: [sample_id, family_id]
     .join(sample_to_family_ch, by: 0) // -> [sample_id, discover_dir, family_id]
-    .map { sample_id, discover_dir, family_id ->
+    .map { _sample_id, discover_dir, family_id ->
         tuple(family_id, discover_dir)
     }
     .groupTuple(by: 0) // Groups all 3 members under the family_id -> [family_id, [dir_child, dir_p1, dir_p2]]
