@@ -12,12 +12,14 @@ include {
 
 } from './modules/deepvariant'
 include { bam_stats; slice_trio_bams_by_interval; samtools_index } from './modules/samtools'
-include { FASTVEP_ANNOTATE_TRIO_VCF } from './modules/fastvep'
+include { FASTVEP_ANNOTATE_TRIO_VCF; FASTVEP_ANNOTATE_SINGLETON_VCF } from './modules/fastvep'
 
 include { WHATSHAP_TRIO_PHASE_BY_CHROM } from './subworkflows/whatshap_trio_phase_by_chrom'
 include { CONCAT_AND_SPLIT_WGS } from './subworkflows/concat_and_split_wgs'
 include { GLNEXUS_TRIO }         from './subworkflows/glnexus_trio_merge'
 include { PBMM2_ALIGN} from './subworkflows/reference_alignment'
+include {FASTVEP_ANNOTATE_WGS} from './subworkflows/fastvep'
+include {DEEPVARIANT_SINGLETON_WGS} from './subworkflows/deepvariant_singleton_wgs'
 include { mosdepth_run; infer_sex; plot_dist_coverage } from './modules/mosdepth'
 
 
@@ -68,7 +70,7 @@ workflow {
         PBMM2_ALIGN.out
     )
 
-}
+    }
 }
 // =========================================================================
 //  WORKFLOW: TRIO ANALYSIS ENTRYPOINTS
@@ -422,19 +424,23 @@ workflow POST_ALIGNMENT_ONLY {
 
 workflow POST_ALIGNMENT {
     take:
-    aligned_bam_ch
+    aligned_bam_ch // tuple(sample_id, bam, bai)
 
     main:
     bam_stats(aligned_bam_ch)
 
-    deepvariant_wgs(
+    // Call singletons variant calling subworkflow (50MB shards + concat)
+    DEEPVARIANT_SINGLETON_WGS(
         file(params.reference),
         file(params.reference_index),
-        aligned_bam_ch
+        aligned_bam_ch,
+        channel.fromPath("${params.bed_dir}/*.bed")
     )
 
-    aligned_bam_ch.join(deepvariant_wgs.out.vcf_tuple, by: 0)
+    aligned_bam_ch
+        .join(DEEPVARIANT_SINGLETON_WGS.out.vcf, by: 0)
         .map { sample_id, bam, bai, vcf, vcf_tbi ->
+            // Reorder to match: tuple(sample_id, vcf, vcf_tbi, bam, bai)
             tuple(sample_id, vcf, vcf_tbi, bam, bai)
         }
         .set { aligned_bam_with_vcf_ch }
@@ -444,6 +450,13 @@ workflow POST_ALIGNMENT {
         file(params.reference),
         file(params.reference_index)
     )    
+
+    FASTVEP_ANNOTATE_WGS(
+        hiphase_small_variants.out.phased_vcf,          // Directly passes phased VCF channel
+        file(params.gff3),
+        file(params.reference),
+        channel.fromPath("${params.sa_dir}/*").collect() // Staged into sa_dir/*
+    )
 
     cpg_methylation_calling(
         hiphase_small_variants.out.haplotagged_bam,

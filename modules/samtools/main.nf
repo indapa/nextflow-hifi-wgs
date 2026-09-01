@@ -41,6 +41,39 @@ process slice_trio_bams_by_interval {
     """
 }
 
+process slice_singleton_bam_by_interval {
+    tag { "${sample_id} - ${interval_bed.baseName}" }
+    container 'community.wave.seqera.io/library/samtools:1.21--0d76da7c3cf7751c'
+
+    cpus 4
+    memory '8 GB'
+
+    input:
+    tuple val(sample_id), path(bam), path(bai), path(interval_bed)
+
+    output:
+    tuple val(sample_id), \
+          path("${sample_id}.${interval_bed.baseName}.bam"), \
+          path("${sample_id}.${interval_bed.baseName}.bam.bai"), \
+          path(interval_bed), \
+          emit: sliced_singleton_package
+
+    script:
+    """
+    # Slice mini-BAM using multi-region matching (-M) against the interval BED
+    samtools view -@ ${task.cpus} -b -M -L ${interval_bed} ${bam} > ${sample_id}.${interval_bed.baseName}.bam
+
+    # Index the regional mini-BAM
+    samtools index -@ ${task.cpus} ${sample_id}.${interval_bed.baseName}.bam
+    """
+
+    stub:
+    """
+    touch ${sample_id}.${interval_bed.baseName}.bam
+    touch ${sample_id}.${interval_bed.baseName}.bam.bai
+    """
+}
+
 
 process downsample {
 

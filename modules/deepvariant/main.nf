@@ -170,7 +170,7 @@ process deeptrio_wgs_by_chrom {
         tuple val(family_id), val(p2_id),    val(interval_bed.baseName), path("${p2_id}.${interval_bed.baseName}.vcf.gz"),     path("${p2_id}.${interval_bed.baseName}.vcf.gz.tbi"),     emit: p2_vcf
         tuple val(family_id), val(p2_id),    val(interval_bed.baseName), path("${p2_id}.${interval_bed.baseName}.g.vcf.gz"),   path("${p2_id}.${interval_bed.baseName}.g.vcf.gz.tbi"),   emit: p2_gvcf
 
-script:
+    script:
     def model_type = task.ext.model_type ?: 'PACBIO'
     """
     mkdir -p /tmp_local/deeptrio_${family_id}_${interval_bed.baseName}
@@ -318,8 +318,87 @@ process concat_wgs_vcf {
 }
 
 
+process concat_chrom_chunks_vcf_singleton {
+    tag { "${meta[0]} - ${meta[1]} (${meta[2]})" }
+    publishDir "${params.deepvariant_output_dir}/singletons/${meta[0]}/by_chrom", mode: 'copy', overwrite: true
+
+    container "community.wave.seqera.io/library/bcftools:1.21--4335bec1d7b44d11"
+
+    input:
+    // meta structure: [sample_id, chrom, file_type] e.g. ["HG001", "chr1", "vcf.gz"]
+    tuple val(meta), path(chunk_files), path(chunk_indices)
+
+    output:
+    tuple val(meta[0]), val(meta[2]), path("${meta[0]}.${meta[1]}.merged.${meta[2]}"), path("${meta[0]}.${meta[1]}.merged.${meta[2]}.tbi"), emit: chrom_merged_file
+
+    script:
+    sample_id = meta[0]
+    chrom     = meta[1]
+    file_type = meta[2]
+    out_file  = "${sample_id}.${chrom}.merged.${file_type}"
+
+    // Sort chunk files in Groovy using natural alphanumeric version sort
+    def sorted_chunks = chunk_files.sort { a, b ->
+        a.name.tokenize('.').first() <=> b.name.tokenize('.').first()
+    }
+    """
+    rm -f clean_file_list.txt
+    echo "${sample_id}" > correct_sample.txt
+    mkdir -p sanitized/
+
+    # 1. Reheader files to guarantee single-sample header uniformity
+    for f in ${sorted_chunks.join(' ')}; do
+        bcftools reheader -s correct_sample.txt "\$f" -o sanitized/"\$f"
+        bcftools index -t sanitized/"\$f"
+    done
+
+    # 2. Build explicit file list in guaranteed genomic coordinate order
+    for f in ${sorted_chunks.join(' ')}; do
+        echo "sanitized/\$f" >> clean_file_list.txt
+    done
+
+    # 3. Concatenate shards along the chromosome and index
+    bcftools concat -a -f clean_file_list.txt -O z -o ${out_file}
+    bcftools index -t ${out_file}
+    """
+
+    stub:
+    """
+    touch ${meta[0]}.${meta[1]}.merged.${meta[2]}
+    touch ${meta[0]}.${meta[1]}.merged.${meta[2]}.tbi
+    """
+}
 
 
+process concat_full_genome_vcf_singleton {
+    tag { "${sample_id} (${file_type})" }
+    publishDir "${params.deepvariant_output_dir}/singletons/${sample_id}", mode: 'copy', overwrite: true
+
+    container "community.wave.seqera.io/library/bcftools:1.21--4335bec1d7b44d11"
+
+    input:
+    tuple val(sample_id), val(file_type), path(chrom_vcfs), path(chrom_tbis)
+
+    output:
+    tuple val(sample_id), path("${sample_id}.deepvariant.${file_type}"), path("${sample_id}.deepvariant.${file_type}.tbi"), emit: genome_vcf
+
+    script:
+    def out_file = "${sample_id}.deepvariant.${file_type}"
+    """
+    # Sort per-chromosome files into standard genomic order (chr1-22, X, Y)
+    ls -1 *.${file_type} | sort -V > genome_file_list.txt
+
+    # Concatenate all chromosomes into final genome-wide VCF/gVCF
+    bcftools concat -a -f genome_file_list.txt -O z -o ${out_file}
+    bcftools index -t ${out_file}
+    """
+
+    stub:
+    """
+    touch ${sample_id}.deepvariant.${file_type}
+    touch ${sample_id}.deepvariant.${file_type}.tbi
+    """
+}
 
 
 process deepvariant_wgs {
@@ -362,6 +441,55 @@ process deepvariant_wgs {
     """
 }
 
+process DEEPVARIANT_CHUNK {
+    tag { "${sample_id}_${interval_bed.baseName}" }
+    container "google/deepvariant:1.10.0"
+    
 
+    cpus 8
+    memory '16 GB'
 
+    input:
+        path ref
+        path ref_index
+        tuple val(sample_id), path(bam), path(bai), path(interval_bed) // 50MB chunk bed file e.g. chr1_0_50000000.bed
 
+    output:
+        tuple val(sample_id), path("${sample_id}.${interval_bed.baseName}.vcf.gz"),   path("${sample_id}.${interval_bed.baseName}.vcf.gz.tbi"),   emit: vcf
+        tuple val(sample_id), path("${sample_id}.${interval_bed.baseName}.g.vcf.gz"), path("${sample_id}.${interval_bed.baseName}.g.vcf.gz.tbi"), emit: gvcf
+
+    script:
+    def model_type = task.ext.model_type ?: 'PACBIO'
+    """
+    mkdir -p /tmp_local/deepvariant_${sample_id}_${interval_bed.baseName}
+
+    # 1. Direct Bazel, Python, and system temp files to local instance storage
+    export TMPDIR=/tmp_local/deepvariant_${sample_id}_${interval_bed.baseName}
+    export HOME=/tmp_local/deepvariant_${sample_id}_${interval_bed.baseName}
+    export PYTHON_RUNFILES_DIRECTORY=/tmp_local/deepvariant_${sample_id}_${interval_bed.baseName}
+
+    # 2. Prewarm Bazel runfiles locally
+    /opt/deepvariant/bin/make_examples --help > /dev/null 2>&1 || true
+
+    # 3. Run DeepVariant single sample over the 50MB chunk BED region
+    /opt/deepvariant/bin/run_deepvariant \\
+        --model_type ${model_type} \\
+        --ref ${ref} \\
+        --reads ${bam} \\
+        --output_vcf ${sample_id}.${interval_bed.baseName}.vcf.gz \\
+        --output_gvcf ${sample_id}.${interval_bed.baseName}.g.vcf.gz \\
+        --num_shards ${task.cpus} \\
+        --regions ${interval_bed} \\
+        --intermediate_results_dir /tmp_local/deepvariant_${sample_id}_${interval_bed.baseName}/intermediate \\
+        --call_variants_extra_args="allow_empty_examples=true"
+
+    # 4. Clean up local disk space upon completion
+    rm -rf /tmp_local/deepvariant_${sample_id}_${interval_bed.baseName}
+    """
+
+    stub:
+    """
+    touch ${sample_id}.${interval_bed.baseName}.vcf.gz ${sample_id}.${interval_bed.baseName}.vcf.gz.tbi
+    touch ${sample_id}.${interval_bed.baseName}.g.vcf.gz ${sample_id}.${interval_bed.baseName}.g.vcf.gz.tbi
+    """
+}
