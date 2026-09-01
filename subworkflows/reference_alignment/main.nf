@@ -9,5 +9,5 @@ workflow PBMM2_ALIGN {
     pbmm2_align(ref_file, alignment_ch)
 
     emit:
-    pbmm2_align.out  // Adjust process output name if needed
+    pbmm2_align.out.aligned_bam  // Adjust process output name if needed
 }
