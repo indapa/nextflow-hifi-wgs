@@ -1,96 +1,103 @@
 {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://raw.githubusercontent.com///nextflow_schema.json",
-    "title": " pipeline parameters",
-    "description": "",
-    "type": "object",
-    "properties": {
-        "samplesheet": {
-            "type": "string"
-        },
-        "hiphase_samplesheet": {
-            "type": "string",
-            "hidden": true
-        },
-        "trio_samplesheet": {
-            "type": "string"
-        },
-        "trio_aligned_samplesheet": {
-            "type": "string"
-        },
-        "reference": {
-            "type": "string",
-            "default": "s3://pacbio-hifi-human-wgs-reference/dataset/hifi-wdl-resources-v2.0.0/GRCh38/human_GRCh38_no_alt_analysis_set.fasta"
-        },
-        "reference_index": {
-            "type": "string",
-            "default": "s3://pacbio-hifi-human-wgs-reference/dataset/hifi-wdl-resources-v2.0.0/GRCh38/human_GRCh38_no_alt_analysis_set.fasta.fai"
-        },
-        "output_dir": {
-            "type": "string",
-            "default": "s3://embedbio-results/hifi-wgs-output"
-        },
-        "aligned_output_dir": {
-            "type": "string",
-            "default": "s3://embedbio-results/hifi-wgs-output/aligned-bams"
-        },
-        "downsample_output_dir": {
-            "type": "string",
-            "default": "s3://embedbio-results/hifi-wgs-output/downsampled-bams"
-        },
-        "bam_stats_output_dir": {
-            "type": "string",
-            "default": "s3://embedbio-results/hifi-wgs-output/bamstats"
-        },
-        "deepvariant_output_dir": {
-            "type": "string",
-            "default": "s3://embedbio-results/hifi-wgs-output/deepvariant"
-        },
-        "intervals_dir": {
-            "type": "string",
-            "default": "s3://pacbio-datasets/resources/deepvariant-regions"
-        },
-        "hiphase_output_dir": {
-            "type": "string",
-            "default": "s3://embedbio-results/hifi-wgs-output/hiphase"
-        },
-        "cpg_output_dir": {
-            "type": "string",
-            "default": "s3://embedbio-results/hifi-wgs-output/cpg"
-        },
-        "mosdepth_output_dir": {
-            "type": "string",
-            "default": "s3://embedbio-results/hifi-wgs-output/mosdepth"
-        },
-        "expected_XX_bed": {
-            "type": "string",
-            "default": "s3://pacbio-datasets/resources/expected_cn/expected_cn.hg38.XX.bed"
-        },
-        "expected_XY_bed": {
-            "type": "string",
-            "default": "s3://pacbio-datasets/resources/expected_cn/expected_cn.hg38.XY.bed"
-        },
-        "excluded_bed": {
-            "type": "string",
-            "default": "s3://pacbio-datasets/resources/cnv_excluded_regions/annotation_and_common_cnv.hg38.bed.gz"
-        },
-        "sawfish_output_dir": {
-            "type": "string",
-            "default": "s3://embedbio-results/hifi-wgs-output/sawfish2"
-        },
-        "glnexus_bed": {
-            "type": "string",
-            "default": "s3://pacbio-datasets/resources/glnexus/all_contigs.bed"
-        },
-        "fastvep_sa_dir": {
-            "type": "string",
-            "default": "s3://pacbio-datasets/resources/fastvep/SA_files/"
-        }
-
-
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com///nextflow_schema.json",
+  "title": " pipeline parameters",
+  "description": "",
+  "type": "object",
+  "properties": {
+    "samplesheet": {
+      "type": "string"
     },
-    "required": [
-        
-        "reference"
-    ]
+    "hiphase_samplesheet": {
+      "type": "string",
+      "hidden": true
+    },
+    "trio_samplesheet": {
+      "type": "string"
+    },
+    "trio_aligned_samplesheet": {
+      "type": "string"
+    },
+    "reference": {
+      "type": "string",
+      "default": "s3://pacbio-hifi-human-wgs-reference/dataset/hifi-wdl-resources-v2.0.0/GRCh38/human_GRCh38_no_alt_analysis_set.fasta"
+    },
+    "reference_index": {
+      "type": "string",
+      "default": "s3://pacbio-hifi-human-wgs-reference/dataset/hifi-wdl-resources-v2.0.0/GRCh38/human_GRCh38_no_alt_analysis_set.fasta.fai"
+    },
+    "output_dir": {
+      "type": "string",
+      "default": "s3://embedbio-results/hifi-wgs-output"
+    },
+    "aligned_output_dir": {
+      "type": "string",
+      "default": "s3://embedbio-results/hifi-wgs-output/aligned-bams"
+    },
+    "downsample_output_dir": {
+      "type": "string",
+      "default": "s3://embedbio-results/hifi-wgs-output/downsampled-bams"
+    },
+    "bam_stats_output_dir": {
+      "type": "string",
+      "default": "s3://embedbio-results/hifi-wgs-output/bamstats"
+    },
+    "deepvariant_output_dir": {
+      "type": "string",
+      "default": "s3://embedbio-results/hifi-wgs-output/deepvariant"
+    },
+    "intervals_dir": {
+      "type": "string",
+      "default": "s3://pacbio-datasets/resources/deepvariant-regions"
+    },
+    "hiphase_output_dir": {
+      "type": "string",
+      "default": "s3://embedbio-results/hifi-wgs-output/hiphase"
+    },
+    "cpg_output_dir": {
+      "type": "string",
+      "default": "s3://embedbio-results/hifi-wgs-output/cpg"
+    },
+    "mosdepth_output_dir": {
+      "type": "string",
+      "default": "s3://embedbio-results/hifi-wgs-output/mosdepth"
+    },
+    "expected_XX_bed": {
+      "type": "string",
+      "default": "s3://pacbio-datasets/resources/expected_cn/expected_cn.hg38.XX.bed"
+    },
+    "expected_XY_bed": {
+      "type": "string",
+      "default": "s3://pacbio-datasets/resources/expected_cn/expected_cn.hg38.XY.bed"
+    },
+    "excluded_bed": {
+      "type": "string",
+      "default": "s3://pacbio-datasets/resources/cnv_excluded_regions/annotation_and_common_cnv.hg38.bed.gz"
+    },
+    "sawfish_output_dir": {
+      "type": "string",
+      "default": "s3://embedbio-results/hifi-wgs-output/sawfish2"
+    },
+    "glnexus_bed": {
+      "type": "string",
+      "default": "s3://pacbio-datasets/resources/glnexus/all_contigs.bed"
+    },
+    "fastvep_sa_dir": {
+      "type": "string",
+      "default": "s3://pacbio-datasets/resources/fastvep/SA_files/"
+    },
+    "mmi": {
+      "type": "string",
+      "default": "s3://aindap-pb-resources/human_GRCh38_no_alt_analysis_set.mmi"
+    },
+    "fastvep_gff": {
+      "type": "string",
+      "default": "s3://pacbio-datasets/resources/fastvep/GFFs/gencode.v50.annotation.gff3.gz"
+    },
+    "glnexus_region_bed": {
+      "type": "string",
+      "default": "s3://pacbio-datasets/resources/glnexus/all_contigs.bed"
+    }
+  },
+  "required": ["reference"]
 }
