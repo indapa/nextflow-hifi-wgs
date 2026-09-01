@@ -17,7 +17,7 @@ include { FASTVEP_ANNOTATE_TRIO_VCF; FASTVEP_ANNOTATE_SINGLETON_VCF } from './mo
 include { WHATSHAP_TRIO_PHASE_BY_CHROM } from './subworkflows/whatshap_trio_phase_by_chrom'
 include { CONCAT_AND_SPLIT_WGS } from './subworkflows/concat_and_split_wgs'
 include { GLNEXUS_TRIO }         from './subworkflows/glnexus_trio_merge'
-include { PBMM2_ALIGN} from './subworkflows/reference_alignment'
+include { PBMM2_ALIGN; PBMM2_SPOT_WGS} from './subworkflows/reference_alignment'
 include {FASTVEP_ANNOTATE_WGS} from './subworkflows/fastvep'
 include {DEEPVARIANT_SINGLETON_WGS} from './subworkflows/deepvariant_singleton_wgs'
 include { mosdepth_run; infer_sex; plot_dist_coverage } from './modules/mosdepth'
@@ -66,9 +66,9 @@ workflow {
     )
 
     /* post alignment */
-    POST_ALIGNMENT(
-        PBMM2_ALIGN.out
-    )
+    //POST_ALIGNMENT(
+    //    PBMM2_ALIGN.out
+    //)
 
     }
 }
@@ -91,13 +91,13 @@ workflow WGS_TRIO {
         }
 
     align_input_ch = raw_samples_ch.map { _fam, sample_id, _role, bam -> tuple(sample_id, bam) }
-    PBMM2_ALIGN(
-        file(params.reference),
+    PBMM2_SPOT_WGS(
+        file(params.mmi),
         align_input_ch
     )
     trio_bams_assembled = raw_samples_ch
         .map { fam, sample_id, role, _raw_bam -> tuple(sample_id, fam, role) }
-        .join(PBMM2_ALIGN.out)
+        .join(PBMM2_SPOT_WGS.out)
         .map { sample_id, fam, role, bam, bai -> 
             tuple(fam, [role: role, id: sample_id, bam: bam, bai: bai]) 
         }

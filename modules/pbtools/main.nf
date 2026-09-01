@@ -47,8 +47,94 @@ process pbmm2_align {
     """
 }
 
+process MAKE_PBI {
+    tag "${sample_id}"
+    container "quay.io/pacbio/pbtk:3.5.0_build2"
 
+    cpus 4
+    memory '8 GB'
 
+    errorStrategy { task.exitStatus in [137, 143] ? 'retry' : 'finish' }
+    maxRetries 3
+
+    input:
+    tuple val(sample_id), path(unaligned_bam)
+
+    output:
+    tuple val(sample_id), path(unaligned_bam), path("${unaligned_bam}.pbi"), emit: bam_pbi
+
+    script:
+    """
+    pbindex -j ${task.cpus} ${unaligned_bam}
+    """
+
+    stub:
+    """
+    touch ${unaligned_bam}.pbi
+    """
+}
+
+process PBMM2_ALIGN_SPOT_CHUNK {
+    tag { "${sample_id} [chunk ${chunk_id}/${total_chunks}]" }
+    container "quay.io/pacbio/pbmm2:26.2.99_build1"
+
+    // 8 vCPUs + 32GB RAM makes tasks small and easy for AWS to place on Spot
+    cpus 8
+    memory '32 GB'
+
+    // Automatically retry if Spot reclaims the instance or out-of-memory occurs
+    errorStrategy { task.exitStatus in [137, 143, 130] ? 'retry' : 'finish' }
+    maxRetries 5
+
+    input:
+    path ref_mmi
+    tuple val(sample_id), path(unaligned_bam), path(pbi), val(chunk_id), val(total_chunks)
+
+    output:
+    tuple val(sample_id), path("${sample_id}.chunk_${chunk_id}.bam"), emit: chunk_bam
+
+    script:
+    def preset     = task.ext.preset ?: 'HIFI'
+    def chunk_mode = task.ext.chunk_mode ?: 'scatter'
+    """
+    pbmm2 align \\
+        ${ref_mmi} \\
+        ${unaligned_bam} \\
+        ${sample_id}.chunk_${chunk_id}.bam \\
+        --preset ${preset} \\
+        --sort \\
+        -j ${task.cpus} \\
+        --sample ${sample_id} \\
+        --chunk ${chunk_id}/${total_chunks} \\
+        --chunk-mode ${chunk_mode}
+    """
+}
+
+process MERGE_SPOT_CHUNKS {
+    tag { "${sample_id}" }
+    publishDir "${params.aligned_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+    container 'community.wave.seqera.io/library/samtools:1.21--0d76da7c3cf7751c'
+
+    // Merging is lightweight and fast enough to run safely on Spot as well
+    cpus 8
+    memory '16 GB'
+
+    errorStrategy { task.exitStatus in [137, 143] ? 'retry' : 'finish' }
+    maxRetries 3
+
+    input:
+    tuple val(sample_id), path(chunk_bams)
+
+    output:
+    tuple val(sample_id), path("${sample_id}.aligned.bam"), path("${sample_id}.aligned.bam.bai"), emit: aligned_bam
+
+    script:
+    """
+    # Sorted join guarantees deterministic merge order across retries
+    samtools merge -@ ${task.cpus} -o ${sample_id}.aligned.bam ${chunk_bams.sort().join(' ')}
+    samtools index -@ ${task.cpus} ${sample_id}.aligned.bam
+    """
+}
 
 process cpg_methylation_calling {
     /*
