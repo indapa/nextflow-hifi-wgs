@@ -332,10 +332,10 @@ process concat_chrom_chunks_vcf_singleton {
     tuple val(meta[0]), val(meta[2]), path("${meta[0]}.${meta[1]}.merged.${meta[2]}"), path("${meta[0]}.${meta[1]}.merged.${meta[2]}.tbi"), emit: chrom_merged_file
 
     script:
-    sample_id = meta[0]
-    chrom     = meta[1]
-    file_type = meta[2]
-    out_file  = "${sample_id}.${chrom}.merged.${file_type}"
+    def sample_id = meta[0]
+    def chrom     = meta[1]
+    def file_type = meta[2]
+    def out_file  = "${sample_id}.${chrom}.merged.${file_type}"
 
     // Sort chunk files in Groovy using natural alphanumeric version sort
     def sorted_chunks = chunk_files.sort { a, b ->
