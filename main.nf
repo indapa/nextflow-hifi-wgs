@@ -429,6 +429,10 @@ workflow POST_ALIGNMENT {
     main:
     bam_stats(aligned_bam_ch)
 
+    mosdepth_run(aligned_bam_ch)
+    infer_sex(mosdepth_run.out.summary)
+    plot_dist_coverage(mosdepth_run.out.global_dist)
+
     // Call singletons variant calling subworkflow (50MB shards + concat)
     DEEPVARIANT_SINGLETON_WGS(
         file(params.reference),
@@ -464,9 +468,7 @@ workflow POST_ALIGNMENT {
         file(params.reference_index)
     )
     
-    mosdepth_run(aligned_bam_ch)
-    infer_sex(mosdepth_run.out.summary)
-    plot_dist_coverage(mosdepth_run.out.global_dist)
+    
 
     expected_bed_ch = infer_sex.out.sex.map { sample_id, sex_csv ->
         def lines = sex_csv.readLines()
