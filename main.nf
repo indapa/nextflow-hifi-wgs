@@ -457,9 +457,9 @@ workflow POST_ALIGNMENT {
 
     FASTVEP_ANNOTATE_WGS(
         hiphase_small_variants.out.phased_vcf,          // Directly passes phased VCF channel
-        file(params.gff3),
+        file(params.fastvep_gff),
         file(params.reference),
-        channel.fromPath("${params.sa_dir}/*").collect() // Staged into sa_dir/*
+        channel.fromPath("${params.fastvep_sa_dir}/*").collect() // Staged into sa_dir/*
     )
 
     cpg_methylation_calling(
