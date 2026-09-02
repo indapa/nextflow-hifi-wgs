@@ -60,7 +60,7 @@ workflow {
         }
 
     /* read alignment */
-    PBMM2_ALIGN(
+    PBMM2_SPOT_WGS(
         file(params.reference),
         input_bams_ch
     )
