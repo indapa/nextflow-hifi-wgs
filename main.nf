@@ -66,9 +66,9 @@ workflow {
     )
 
     /* post alignment */
-    //POST_ALIGNMENT(
-    //    PBMM2_ALIGN.out
-    //)
+    POST_ALIGNMENT(
+        PBMM2_ALIGN.out
+    )
 
     }
 }
