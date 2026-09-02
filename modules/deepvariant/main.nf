@@ -329,7 +329,10 @@ process concat_chrom_chunks_vcf_singleton {
     tuple val(meta), path(chunk_files), path(chunk_indices)
 
     output:
-    tuple val(meta[0]), val(meta[2]), path("${meta[0]}.${meta[1]}.merged.${meta[2]}"), path("${meta[0]}.${meta[1]}.merged.${meta[2]}.tbi"), emit: chrom_merged_file
+    tuple val("${meta[0]}"), val("${meta[2]}"), path("${meta[0]}.${meta[1]}.merged.${meta[2]}"), path("${meta[0]}.${meta[1]}.merged.${meta[2]}.tbi"), emit: chrom_merged_file
+
+
+
 
     script:
     def sample_id = meta[0]
