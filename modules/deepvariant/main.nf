@@ -449,8 +449,7 @@ process DEEPVARIANT_CHUNK {
     container "google/deepvariant:1.10.0"
     
 
-    cpus 8
-    memory '16 GB'
+    
 
     input:
         path ref
