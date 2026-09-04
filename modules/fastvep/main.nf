@@ -18,6 +18,7 @@ process FASTVEP_ANNOTATE_SINGLETON_VCF {
     script:
     """
     fastvep \
+        annotate \
         --input ${vcf} \
         --gff ${gff3} \
         --fasta ${fasta} \
