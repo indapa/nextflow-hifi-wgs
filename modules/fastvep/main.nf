@@ -20,7 +20,7 @@ process FASTVEP_ANNOTATE_SINGLETON_VCF {
     fastvep \
         annotate \
         --input ${vcf} \
-        --gff ${gff3} \
+        --gff3 ${gff3} \
         --fasta ${fasta} \
         --sa-dir sa_dir \
         --output ${sample_id}.annotated.vcf.gz
