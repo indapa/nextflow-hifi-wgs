@@ -482,7 +482,7 @@ workflow POST_ALIGNMENT {
         }
         return tuple(sample_id, expected_bed)
     }
-
+    /*
     sawfish_in_ch = aligned_bam_ch.join(expected_bed_ch, by: 0)
 
     sawfish_discover(
@@ -495,6 +495,7 @@ workflow POST_ALIGNMENT {
     sawfish_joint_call(
         sawfish_discover.out.discover_dir.collect()
     )
+    */
 }
 
 
