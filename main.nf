@@ -427,13 +427,15 @@ workflow POST_ALIGNMENT {
     aligned_bam_ch // tuple(sample_id, bam, bai)
 
     main:
+   
     bam_stats(aligned_bam_ch)
 
     mosdepth_run(aligned_bam_ch)
     infer_sex(mosdepth_run.out.summary)
     plot_dist_coverage(mosdepth_run.out.global_dist)
-
+    
     // Call singletons variant calling subworkflow (50MB shards + concat)
+    /*
     DEEPVARIANT_SINGLETON_WGS(
         file(params.reference),
         file(params.reference_index),
@@ -468,7 +470,7 @@ workflow POST_ALIGNMENT {
         file(params.reference_index)
     )
     
-    
+    */
 
     expected_bed_ch = infer_sex.out.sex.map { sample_id, sex_csv ->
         def lines = sex_csv.readLines()
@@ -482,7 +484,7 @@ workflow POST_ALIGNMENT {
         }
         return tuple(sample_id, expected_bed)
     }
-    /*
+    
     sawfish_in_ch = aligned_bam_ch.join(expected_bed_ch, by: 0)
 
     sawfish_discover(
@@ -495,7 +497,7 @@ workflow POST_ALIGNMENT {
     sawfish_joint_call(
         sawfish_discover.out.discover_dir.collect()
     )
-    */
+    
 }
 
 
