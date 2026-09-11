@@ -20,7 +20,10 @@ include { GLNEXUS_TRIO }         from './subworkflows/glnexus_trio_merge'
 include { PBMM2_ALIGN; PBMM2_SPOT_WGS} from './subworkflows/reference_alignment'
 include {FASTVEP_ANNOTATE_WGS} from './subworkflows/fastvep'
 include {DEEPVARIANT_SINGLETON_WGS} from './subworkflows/deepvariant_singleton_wgs'
+include { TRGT_GENOTYPING } from './subworkflows/trgt'
+
 include { mosdepth_run; infer_sex; plot_dist_coverage } from './modules/mosdepth'
+
 
 
 
@@ -433,9 +436,11 @@ workflow POST_ALIGNMENT {
     mosdepth_run(aligned_bam_ch)
     infer_sex(mosdepth_run.out.summary)
     plot_dist_coverage(mosdepth_run.out.global_dist)
+
+ 
     
     // Call singletons variant calling subworkflow (50MB shards + concat)
-    /*
+    
     DEEPVARIANT_SINGLETON_WGS(
         file(params.reference),
         file(params.reference_index),
@@ -470,7 +475,7 @@ workflow POST_ALIGNMENT {
         file(params.reference_index)
     )
     
-    */
+    
 
     expected_bed_ch = infer_sex.out.sex.map { sample_id, sex_csv ->
         def lines = sex_csv.readLines()
@@ -496,6 +501,16 @@ workflow POST_ALIGNMENT {
 
     sawfish_joint_call(
         sawfish_discover.out.discover_dir.collect()
+    )
+
+       TRGT_GENOTYPING(
+        aligned_bam_ch,
+        file(params.reference),
+        file(params.reference_index),
+        file(params.trgt_repeats_bed),
+        file(params.expected_XY_bed),
+        file(params.expected_XX_bed),
+        infer_sex.out.sex
     )
     
 }

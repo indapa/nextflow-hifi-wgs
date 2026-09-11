@@ -329,3 +329,84 @@ process hiphase_small_variants {
     """
 }
 
+
+process trgt {
+    tag "$sample_id"
+    publishDir "${params.trgt_output_dir}/${sample_id}", mode: 'copy'
+    
+    
+    container "quay.io/pacbio/trgt@sha256:be0ed7c173d221bd84e360b2b056e2abbecadd07ed86ffd4883a5cecca7a1e57"
+
+    input:
+    // This matches the joined channel: [sample_id, bam, bai, sex]
+    tuple val(sample_id), path(bam), path(bam_index), val(sex)
+    path reference
+    path reference_index
+    path tandem_repeat_bed
+    path expected_XY_bed
+    path expected_XX_bed
+
+    output:
+    tuple val(sample_id), path("${sample_id}.trgt.spanning.sorted.bam"), path("${sample_id}.trgt.spanning.sorted.bam.bai"), emit: spanning_reads
+    tuple val(sample_id), path("${sample_id}.trgt.sorted.vcf.gz"), path("${sample_id}.trgt.sorted.vcf.gz.tbi"), emit: repeat_vcf
+    path "${sample_id}.trgt.dropouts.txt", emit: dropouts
+    path "${sample_id}.stats.txt", emit: stats
+
+    script:
+    def karyotype   = (sex == 'MALE') ? 'XY' : 'XX'
+    def expected_bed = (sex == 'MALE') ? expected_XY_bed : expected_XX_bed
+    """
+    set -euo pipefail
+
+   trgt genotype \\
+        --threads ${task.cpus} \\
+        --karyotype ${karyotype} \\
+        --genome ${reference} \\
+        --repeats ${tandem_repeat_bed} \\
+        --reads ${bam} \\
+        --output-prefix ${sample_id}.trgt \\
+        --max-depth ${params.trgt_max_depth} \\
+        --min-read-quality ${params.trgt_min_mapq}
+
+    bcftools sort \\
+        --output-type z \\
+        --output ${sample_id}.trgt.sorted.vcf.gz \\
+        ${sample_id}.trgt.vcf.gz
+
+    bcftools index --threads ${task.cpus} --tbi ${sample_id}.trgt.sorted.vcf.gz
+
+    samtools sort \\
+        -@ ${task.cpus} \\
+        -o ${sample_id}.trgt.spanning.sorted.bam \\
+        ${sample_id}.trgt.spanning.bam
+
+    samtools index -@ ${task.cpus} ${sample_id}.trgt.spanning.sorted.bam
+
+    # Clean up intermediate TRGT outputs after sorted/indexed versions are created
+    rm -f ${sample_id}.trgt.vcf.gz ${sample_id}.trgt.spanning.bam
+
+    find_trgt_dropouts.py \\
+        --ploidybed ${expected_bed} \\
+        --coverage 2 \\
+        ${tandem_repeat_bed} \\
+        ${sample_id}.trgt.spanning.sorted.bam \\
+        > ${sample_id}.trgt.dropouts.txt
+
+    # Stats generation
+    echo "--- TRGT Stats for ${sample_id} ---" > ${sample_id}.stats.txt
+    echo -n "Total Genotyped: " >> ${sample_id}.stats.txt
+    bcftools view --no-header --exclude-uncalled ${sample_id}.trgt.sorted.vcf.gz | wc -l >> ${sample_id}.stats.txt
+    echo -n "Total Uncalled:  " >> ${sample_id}.stats.txt
+    bcftools view --no-header --uncalled ${sample_id}.trgt.sorted.vcf.gz | wc -l >> ${sample_id}.stats.txt
+    """
+
+    stub:
+    """
+    touch ${sample_id}.trgt.spanning.sorted.bam
+    touch ${sample_id}.trgt.spanning.sorted.bam.bai
+    touch ${sample_id}.trgt.sorted.vcf.gz
+    touch ${sample_id}.trgt.sorted.vcf.gz.tbi
+    touch ${sample_id}.trgt.dropouts.txt
+    touch ${sample_id}.stats.txt
+    """
+}
