@@ -1,6 +1,28 @@
-include { DEEPVARIANT_CHUNK; concat_full_genome_vcf_singleton; concat_chrom_chunks_vcf_singleton} from '../../modules/deepvariant'
+include { DEEPVARIANT_CHUNK; concat_full_genome_vcf_singleton; concat_chrom_chunks_vcf_singleton; deepvariant_wgs_parabricks} from '../../modules/deepvariant'
 include {slice_singleton_bam_by_interval} from '../../modules/samtools'
 
+
+workflow DEEPVARIANT_SINGLETON_WGS_PARABRICKS {
+
+    take:
+    ref_file       // path(reference_fasta)
+    ref_index_file // path(reference_fai)
+    aligned_bam_ch // channel: tuple(sample_id, bam, bai)
+
+    main:
+    
+
+    // 3. Call variants across 50MB chunks in parallel using Parabricks DeepVariant
+    deepvariant_wgs_parabricks(
+        ref_file,
+        ref_index_file,
+        aligned_bam_ch
+    )
+
+    emit:
+    vcf  = deepvariant_wgs_parabricks.out.vcf   // tuple(sample_id, vcf, tbi)
+    gvcf = deepvariant_wgs_parabricks.out.gvcf  // tuple(sample_id, gvcf, gtbi)
+}
 
 workflow DEEPVARIANT_SINGLETON_WGS {
 

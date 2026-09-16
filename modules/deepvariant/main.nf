@@ -403,6 +403,48 @@ process concat_full_genome_vcf_singleton {
     """
 }
 
+process deepvariant_wgs_parabricks {
+    
+    tag { "${sample_id}" }
+    publishDir { "${params.deepvariant_output_dir}/${sample_id}" }, mode: 'copy', overwrite: true
+    
+    
+    container "nvcr.io/nvidia/clara/clara-parabricks:4.7.1-1"
+
+    // 2. Add GPU directives for Nextflow & Docker/Apptainer container runtime
+    accelerator 1
+    containerOptions '--gpus all'
+
+    input:
+    path ref                                                          // Reference genome FASTA
+    path ref_index                                                    // Reference index (.fai)
+    tuple val(sample_id), path(bam), path(bam_index)                 // Aligned BAM + index
+
+    output:
+    tuple val(sample_id), path("${sample_id}.deepvariant.vcf.gz"), path("${sample_id}.deepvariant.vcf.gz.tbi"), emit: vcf
+    tuple val(sample_id), path("${sample_id}.deepvariant.g.vcf.gz"), path("${sample_id}.deepvariant.g.vcf.gz.tbi"), emit: gvcf
+
+    script:
+    def model_type = task.ext.model_type ?: 'pacbio'
+    
+    """
+    pbrun deepvariant \\
+        --ref ${ref} \\
+        --in-bam ${bam} \\
+        --out-variants ${sample_id}.deepvariant.vcf.gz \\
+        --mode ${model_type} \\
+        --gvcf \\
+        --num-gpus ${task.accelerator}
+    """
+
+    stub:
+    """
+    touch ${sample_id}.deepvariant.vcf.gz
+    touch ${sample_id}.deepvariant.vcf.gz.tbi
+    touch ${sample_id}.deepvariant.g.vcf.gz
+    touch ${sample_id}.deepvariant.g.vcf.gz.tbi
+    """
+}
 
 process deepvariant_wgs {
     
