@@ -19,7 +19,7 @@ include { CONCAT_AND_SPLIT_WGS } from './subworkflows/concat_and_split_wgs'
 include { GLNEXUS_TRIO }         from './subworkflows/glnexus_trio_merge'
 include { PBMM2_ALIGN; PBMM2_SPOT_WGS} from './subworkflows/reference_alignment'
 include {FASTVEP_ANNOTATE_WGS} from './subworkflows/fastvep'
-include {DEEPVARIANT_SINGLETON_WGS} from './subworkflows/deepvariant_singleton_wgs'
+include {DEEPVARIANT_SINGLETON_WGS; DEEPVARIANT_SINGLETON_WGS_PARABRICKS} from './subworkflows/deepvariant_singleton_wgs'
 include { TRGT_GENOTYPING } from './subworkflows/trgt'
 
 include { mosdepth_run; infer_sex; plot_dist_coverage } from './modules/mosdepth'
@@ -441,13 +441,13 @@ workflow POST_ALIGNMENT {
     
     // Call singletons variant calling subworkflow (50MB shards + concat)
     
-    DEEPVARIANT_SINGLETON_WGS(
+    DEEPVARIANT_SINGLETON_WGS_PARABRICKS(
         file(params.reference),
         file(params.reference_index),
-        aligned_bam_ch,
-        channel.fromPath("${params.bed_dir}/*.bed")
+        aligned_bam_ch
     )
-
+    
+    /*
     aligned_bam_ch
         .join(DEEPVARIANT_SINGLETON_WGS.out.vcf, by: 0)
         .map { sample_id, bam, bai, vcf, vcf_tbi ->
@@ -512,7 +512,7 @@ workflow POST_ALIGNMENT {
         file(params.expected_XX_bed),
         infer_sex.out.sex
     )
-    
+   */ 
 }
 
 
