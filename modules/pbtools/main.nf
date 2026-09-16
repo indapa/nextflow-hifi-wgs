@@ -335,7 +335,7 @@ process trgt {
     publishDir "${params.trgt_output_dir}/${sample_id}", mode: 'copy'
     
     
-    container "quay.io/pacbio/trgt@sha256:be0ed7c173d221bd84e360b2b056e2abbecadd07ed86ffd4883a5cecca7a1e57"
+    container "quay.io/pacbio/trgt:5.1.0_build2"
 
     input:
     // This matches the joined channel: [sample_id, bam, bai, sex]
