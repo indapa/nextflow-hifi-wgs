@@ -432,25 +432,26 @@ workflow POST_ALIGNMENT {
     main:
    
    
-    //bam_stats(aligned_bam_ch)
+    bam_stats(aligned_bam_ch)
 
-    //mosdepth_run(aligned_bam_ch)
-    //infer_sex(mosdepth_run.out.summary)
+    mosdepth_run(aligned_bam_ch)
+    infer_sex(mosdepth_run.out.summary)
     
-    //plot_dist_coverage(mosdepth_run.out.global_dist)
+    plot_dist_coverage(mosdepth_run.out.global_dist)
     
  
     
     // Call singletons variant calling subworkflow (50MB shards + concat)
     
-    DEEPVARIANT_SINGLETON_WGS_PARABRICKS(
+    DEEPVARIANT_SINGLETON_WGS(
         file(params.reference),
         file(params.reference_index),
-        aligned_bam_ch
+        aligned_bam_ch,
+        channel.fromPath("${params.bed_dir}/*.bed")
     )
     
     
-    /*
+    
     aligned_bam_ch
         .join(DEEPVARIANT_SINGLETON_WGS.out.vcf, by: 0)
         .map { sample_id, bam, bai, vcf, vcf_tbi ->
@@ -515,7 +516,7 @@ workflow POST_ALIGNMENT {
         file(params.expected_XX_bed),
         infer_sex.out.sex
     )
-     */ 
+     
  
 }
 
