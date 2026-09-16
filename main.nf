@@ -431,21 +431,24 @@ workflow POST_ALIGNMENT {
 
     main:
    
-    bam_stats(aligned_bam_ch)
+   
+    //bam_stats(aligned_bam_ch)
 
     mosdepth_run(aligned_bam_ch)
     infer_sex(mosdepth_run.out.summary)
-    plot_dist_coverage(mosdepth_run.out.global_dist)
-
+    
+    //plot_dist_coverage(mosdepth_run.out.global_dist)
+    
  
     
     // Call singletons variant calling subworkflow (50MB shards + concat)
-    
+    /*
     DEEPVARIANT_SINGLETON_WGS_PARABRICKS(
         file(params.reference),
         file(params.reference_index),
         aligned_bam_ch
     )
+    */
     
     /*
     aligned_bam_ch
@@ -502,7 +505,7 @@ workflow POST_ALIGNMENT {
     sawfish_joint_call(
         sawfish_discover.out.discover_dir.collect()
     )
-
+    */ 
        TRGT_GENOTYPING(
         aligned_bam_ch,
         file(params.reference),
@@ -512,7 +515,7 @@ workflow POST_ALIGNMENT {
         file(params.expected_XX_bed),
         infer_sex.out.sex
     )
-   */ 
+ 
 }
 
 
