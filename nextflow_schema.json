@@ -70,6 +70,18 @@
       "type": "string",
       "default": "s3://pacbio-datasets/resources/expected_cn/expected_cn.hg38.XY.bed"
     },
+    "trgt_repeats_bed": {
+      "type": "string",
+      "default": "s3://pacbio-datasets/resources/adotto_strchive_20250827.hg38.bed.gz"
+    },
+    "trgt_max_depth": {
+      "type": "integer",
+      "default": 50
+    },
+    "trgt_min_mapq": {
+      "type": "number",
+      "default": 0.98
+    },
     "excluded_bed": {
       "type": "string",
       "default": "s3://pacbio-datasets/resources/cnv_excluded_regions/annotation_and_common_cnv.hg38.bed.gz"
