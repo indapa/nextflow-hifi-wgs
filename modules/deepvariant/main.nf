@@ -434,7 +434,7 @@ process deepvariant_wgs_parabricks {
         --out-variants ${sample_id}.deepvariant.vcf.gz \\
         --mode ${model_type} \\
         --gvcf \\
-        --num-gpus ${task.accelerator}
+        --num-gpus 1
     """
 
     stub:
