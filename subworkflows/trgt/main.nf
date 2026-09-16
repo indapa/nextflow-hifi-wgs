@@ -62,7 +62,7 @@ workflow TRGT_GENOTYPING {
 
     emit:
       
-    repeat_vcf  = trgt.out.repeat.vcf   // tuple(sample_id, vcf, tbi)
+    repeat_vcf  = trgt.out.repeat_vcf   // tuple(sample_id, vcf, tbi)
     repeat_bam = trgt.out.spanning_reads // tuple(sample_id, bam, bai)
     dropout_file = trgt.out.dropouts // tuple(sample_id, dropout_file)
     stats_file = trgt.out.stats // tuple(sample_id, stats_file)
