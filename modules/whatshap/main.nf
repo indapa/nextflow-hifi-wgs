@@ -126,11 +126,40 @@ process CONCAT_PHASED_VCFS {
     """
 }
 
+process SPLIT_TRIO_VCF_BY_SAMPLE {
+    tag { "${family_id}" }
+    label 'process_low'
+    container "quay.io/biocontainers/bcftools:1.17--haef29d1_0"
+
+    input:
+    tuple val(family_id), path(vcf), path(vcf_tbi), \
+          val(child_id), val(p1_id), val(p2_id)
+
+    output:
+    tuple val(child_id), path("${child_id}.vcf.gz"), emit: child_vcf
+    tuple val(p1_id),    path("${p1_id}.vcf.gz"),    emit: p1_vcf
+    tuple val(p2_id),    path("${p2_id}.vcf.gz"),    emit: p2_vcf
+
+    script:
+    """
+    bcftools view -s ${child_id} --min-ac=1 -a -Oz -o ${child_id}.vcf.gz ${vcf}
+    bcftools view -s ${p1_id}    --min-ac=1 -a -Oz -o ${p1_id}.vcf.gz    ${vcf}
+    bcftools view -s ${p2_id}    --min-ac=1 -a -Oz -o ${p2_id}.vcf.gz    ${vcf}
+    """
+
+    stub:
+    """
+    touch ${child_id}.vcf.gz
+    touch ${p1_id}.vcf.gz
+    touch ${p2_id}.vcf.gz
+    """
+}
+
 // modules/local/whatshap_stats_haplotag/main.nf
 process WHATSHAP_STATS_HAPLOTAG {
     tag "${family_id}"
     label 'process_medium'
-    publishDir "${params.deepvariant_output_dir}/DV_trio/${family_id}", mode: 'copy', overwrite: true
+    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
     container "indapa/whatshap-tabix"
 
     input:

@@ -5,12 +5,17 @@ include { WHATSHAP_STATS_HAPLOTAG } from '../../modules/whatshap'
 
 workflow WHATSHAP_TRIO_PHASE_BY_CHROM {
     take:
-    ch_trio_input   // [family_id, vcf, vcf_tbi, child_id, child_bam, child_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai]
+    glnexus_vcf_ch  // tuple(family_id, vcf, tbi) -- e.g. GLNEXUS_TRIO.out
+    trio_bam_ch     // tuple(family_id, child_id, child_bam, child_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai) -- e.g. trio_bams_assembled
     ch_reference    // value channel: path to reference fasta
     ch_ref_index    // value channel: path to reference fasta index
     chromosomes     // channel.fromList(params.chromosomes)
 
     main:
+    // Attach each family's joint-called VCF to its trio BAMs
+    ch_trio_input = glnexus_vcf_ch.join(trio_bam_ch, by: 0)
+        // [family_id, vcf, vcf_tbi, child_id, child_bam, child_bai, p1_id, p1_bam, p1_bai, p2_id, p2_bam, p2_bai]
+
     // Split ch_trio_input into two branches so it isn't consumed twice
     ch_trio_input.multiMap { row ->
         phase: row

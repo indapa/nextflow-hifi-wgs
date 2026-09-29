@@ -64,12 +64,14 @@ process MAKE_PBI {
     tuple val(sample_id), path(unaligned_bam), path("${unaligned_bam}.pbi"), emit: bam_pbi
 
     script:
+    def basename = unaligned_bam.simpleName
     """
     pbindex -j ${task.cpus} ${unaligned_bam}
     """
 
     stub:
     """
+    touch ${sample_id}.hifi_reads.bam
     touch ${unaligned_bam}.pbi
     """
 }
@@ -108,11 +110,16 @@ process PBMM2_ALIGN_SPOT_CHUNK {
         --chunk ${chunk_id}/${total_chunks} \\
         --chunk-mode ${chunk_mode}
     """
+
+    stub:
+    """
+    touch ${sample_id}.chunk_${chunk_id}.bam
+    """
 }
 
 process MERGE_SPOT_CHUNKS {
     tag { "${sample_id}" }
-    publishDir "${params.aligned_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+    publishDir { "${params.aligned_output_dir}/${sample_id}" }, mode: 'copy', overwrite: true
     container 'community.wave.seqera.io/library/samtools:1.21--0d76da7c3cf7751c'
 
     // Merging is lightweight and fast enough to run safely on Spot as well
@@ -133,6 +140,12 @@ process MERGE_SPOT_CHUNKS {
     # Sorted join guarantees deterministic merge order across retries
     samtools merge -@ ${task.cpus} -o ${sample_id}.aligned.bam ${chunk_bams.sort().join(' ')}
     samtools index -@ ${task.cpus} ${sample_id}.aligned.bam
+    """
+
+    stub:
+    """
+    touch ${sample_id}.aligned.bam
+    touch ${sample_id}.aligned.bam.bai
     """
 }
 
@@ -332,7 +345,7 @@ process hiphase_small_variants {
 
 process trgt {
     tag "$sample_id"
-    publishDir "${params.trgt_output_dir}/${sample_id}", mode: 'copy'
+    publishDir { "${params.trgt_output_dir}/${sample_id}" }, mode: 'copy'
     
     
     container "quay.io/pacbio/trgt:5.1.0_build2"

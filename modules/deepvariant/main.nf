@@ -216,6 +216,85 @@ process deeptrio_wgs_by_chrom {
     """
 }
 
+
+process deeptrio_wgs_50mb_chunk {
+    tag "${family_id}_${interval_bed.baseName}"
+    container "google/deepvariant:deeptrio-1.10.0"
+    
+    stageInMode 'copy'
+
+    cpus 16
+    memory '32 GB'
+    accelerator 1
+    containerOptions '--gpus all'
+
+    input:
+    path ref
+    path ref_index
+    tuple val(family_id), \
+          val(child_id), path(child_bam), path(child_bai), \
+          val(p1_id),    path(p1_bam),    path(p1_bai), \
+          val(p2_id),    path(p2_bam),    path(p2_bai), \
+          path(interval_bed)
+
+    output:
+    tuple val(family_id), val(child_id), val(interval_bed.baseName), path("${child_id}.${interval_bed.baseName}.vcf.gz"),   path("${child_id}.${interval_bed.baseName}.vcf.gz.tbi"),   emit: child_vcf
+    tuple val(family_id), val(child_id), val(interval_bed.baseName), path("${child_id}.${interval_bed.baseName}.g.vcf.gz"), path("${child_id}.${interval_bed.baseName}.g.vcf.gz.tbi"), emit: child_gvcf
+    
+    tuple val(family_id), val(p1_id),    val(interval_bed.baseName), path("${p1_id}.${interval_bed.baseName}.vcf.gz"),     path("${p1_id}.${interval_bed.baseName}.vcf.gz.tbi"),     emit: p1_vcf
+    tuple val(family_id), val(p1_id),    val(interval_bed.baseName), path("${p1_id}.${interval_bed.baseName}.g.vcf.gz"),   path("${p1_id}.${interval_bed.baseName}.g.vcf.gz.tbi"),   emit: p1_gvcf
+    
+    tuple val(family_id), val(p2_id),    val(interval_bed.baseName), path("${p2_id}.${interval_bed.baseName}.vcf.gz"),     path("${p2_id}.${interval_bed.baseName}.vcf.gz.tbi"),     emit: p2_vcf
+    tuple val(family_id), val(p2_id),    val(interval_bed.baseName), path("${p2_id}.${interval_bed.baseName}.g.vcf.gz"),   path("${p2_id}.${interval_bed.baseName}.g.vcf.gz.tbi"),   emit: p2_gvcf
+
+    script:
+    def model_type = task.ext.model_type ?: 'PACBIO'
+    """
+    # Enforce BAM index locality
+    [ -f "${child_bam}.bai" ] || ln -s ${child_bai} ${child_bam}.bai
+    [ -f "${p1_bam}.bai" ]    || ln -s ${p1_bai}    ${p1_bam}.bai
+    [ -f "${p2_bam}.bai" ]    || ln -s ${p2_bai}    ${p2_bam}.bai
+
+    mkdir -p /tmp_local/deeptrio_${family_id}_${interval_bed.baseName}
+
+    export TMPDIR=/tmp_local/deeptrio_${family_id}_${interval_bed.baseName}
+    export HOME=/tmp_local/deeptrio_${family_id}_${interval_bed.baseName}
+    export PYTHON_RUNFILES_DIRECTORY=/tmp_local/deeptrio_${family_id}_${interval_bed.baseName}
+
+    /opt/deepvariant/bin/deeptrio/make_examples --help > /dev/null 2>&1 || true
+
+    /opt/deepvariant/bin/deeptrio/run_deeptrio \\
+        --model_type ${model_type} \\
+        --ref ${ref} \\
+        --reads_child ${child_bam} \\
+        --reads_parent1 ${p1_bam} \\
+        --reads_parent2 ${p2_bam} \\
+        --sample_name_child "${child_id}" \\
+        --sample_name_parent1 "${p1_id}" \\
+        --sample_name_parent2 "${p2_id}" \\
+        --output_vcf_child ${child_id}.${interval_bed.baseName}.vcf.gz \\
+        --output_vcf_parent1 ${p1_id}.${interval_bed.baseName}.vcf.gz \\
+        --output_vcf_parent2 ${p2_id}.${interval_bed.baseName}.vcf.gz \\
+        --output_gvcf_child ${child_id}.${interval_bed.baseName}.g.vcf.gz \\
+        --output_gvcf_parent1 ${p1_id}.${interval_bed.baseName}.g.vcf.gz \\
+        --output_gvcf_parent2 ${p2_id}.${interval_bed.baseName}.g.vcf.gz \\
+        --num_shards ${task.cpus} \\
+        --regions ${interval_bed} \\
+        --intermediate_results_dir /tmp_local/deeptrio_${family_id}_${interval_bed.baseName}/intermediate \\
+        --call_variants_extra_args="allow_empty_examples=true"
+
+    rm -rf /tmp_local/deeptrio_${family_id}_${interval_bed.baseName}
+    """
+
+    stub:
+    """
+    touch ${child_id}.${interval_bed.baseName}.vcf.gz ${child_id}.${interval_bed.baseName}.vcf.gz.tbi ${child_id}.${interval_bed.baseName}.g.vcf.gz ${child_id}.${interval_bed.baseName}.g.vcf.gz.tbi
+    touch ${p1_id}.${interval_bed.baseName}.vcf.gz ${p1_id}.${interval_bed.baseName}.vcf.gz.tbi ${p1_id}.${interval_bed.baseName}.g.vcf.gz ${p1_id}.${interval_bed.baseName}.g.vcf.gz.tbi
+    touch ${p2_id}.${interval_bed.baseName}.vcf.gz ${p2_id}.${interval_bed.baseName}.vcf.gz.tbi ${p2_id}.${interval_bed.baseName}.g.vcf.gz ${p2_id}.${interval_bed.baseName}.g.vcf.gz.tbi
+    """
+}
+
+
 process concat_chrom_chunks_vcf {
     tag { "${meta[0]} - ${meta[1]} - ${meta[2]} (${meta[3]})" }
     publishDir { "${params.deepvariant_output_dir}/DV_trio/${meta[0]}/by_chrom/${meta[2]}" }, mode: 'copy', overwrite: true
@@ -320,7 +399,7 @@ process concat_wgs_vcf {
 
 process concat_chrom_chunks_vcf_singleton {
     tag { "${meta[0]} - ${meta[1]} (${meta[2]})" }
-    publishDir "${params.deepvariant_output_dir}/singletons/${meta[0]}/by_chrom", mode: 'copy', overwrite: true
+    publishDir { "${params.deepvariant_output_dir}/singletons/${meta[0]}/by_chrom" }, mode: 'copy', overwrite: true
 
     container "community.wave.seqera.io/library/bcftools:1.21--4335bec1d7b44d11"
 
@@ -375,7 +454,7 @@ process concat_chrom_chunks_vcf_singleton {
 
 process concat_full_genome_vcf_singleton {
     tag { "${sample_id} (${file_type})" }
-    publishDir "${params.deepvariant_output_dir}/singletons/${sample_id}", mode: 'copy', overwrite: true
+    publishDir { "${params.deepvariant_output_dir}/singletons/${sample_id}" }, mode: 'copy', overwrite: true
 
     container "community.wave.seqera.io/library/bcftools:1.21--4335bec1d7b44d11"
 
