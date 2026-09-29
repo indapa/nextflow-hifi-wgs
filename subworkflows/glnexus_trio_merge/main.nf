@@ -3,27 +3,31 @@ include { glnexus_trio_by_chrom; concat_glnexus_vcf } from '../../modules/glnexu
 workflow GLNEXUS_TRIO {
 
     take:
-    glnexus_input_ch   // tuple( sample_id, family_id, gvcf, tbi, role )
-    ch_chroms          // channel of chromosome names (e.g. 'chr1', 'chr2', ...)
-    region_bed         // path to full BED file
+    deeptrio_gvcf_ch  // tuple(family_id, sample_id, gvcf, tbi) -- e.g. DEEPTRIO_WGS.out.gvcf
+    sample_roles_ch   // tuple(sample_id, role) -- role is 'child', 'parent1', or 'parent2'
+    ch_chroms         // channel of chromosome names (e.g. 'chr1', 'chr2', ...)
+    region_bed        // path to full BED file
 
     main:
-    // Regroup by family, extracting role-tagged file maps
-    glnexus_prepared_ch = glnexus_input_ch
-        .map { _sample_id, family_id, vcf, tbi, role ->
-            tuple(family_id, [role: role, vcf: vcf, tbi: tbi])
+    // Attach role to each per-sample gVCF, then regroup by family into a single
+    // child/parent1/parent2 tuple
+    glnexus_prepared_ch = deeptrio_gvcf_ch
+        .map { family_id, sample_id, gvcf, tbi -> tuple(sample_id, family_id, gvcf, tbi) }
+        .join(sample_roles_ch, by: 0)
+        .map { _sample_id, family_id, gvcf, tbi, role ->
+            tuple(family_id, [role: role, gvcf: gvcf, tbi: tbi])
         }
         .groupTuple(by: 0)
         .map { family_id, members ->
             def child   = members.find { member -> member.role == 'child' }
-            def parent1 = members.find { member -> member.role == 'parent1'}
-            def parent2 = members.find { member -> member.role == 'parent2'}
+            def parent1 = members.find { member -> member.role == 'parent1' }
+            def parent2 = members.find { member -> member.role == 'parent2' }
 
             tuple(
                 family_id,
-                child.vcf,   child.tbi,
-                parent1.vcf, parent1.tbi,
-                parent2.vcf, parent2.tbi
+                child.gvcf,   child.tbi,
+                parent1.gvcf, parent1.tbi,
+                parent2.gvcf, parent2.tbi
             )
         }
 

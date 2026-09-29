@@ -6,7 +6,7 @@ process annotate_vep {
     tag "${sample_id}"
     container 'ensemblorg/ensembl-vep:latest'
     containerOptions "--user \$(id -u):\$(id -g)"
-    publishDir "${params.vep_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+    publishDir { "${params.vep_output_dir}/${sample_id}" }, mode: 'copy', overwrite: true
     
     input:
     tuple val(sample_id), path(phased_vcf), path(phased_tbi)

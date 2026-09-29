@@ -1,7 +1,7 @@
 process FASTVEP_ANNOTATE_SINGLETON_VCF {
     tag "${sample_id}"
     container 'docker.io/indapa/fastvep:0.2.0'
-    publishDir "${params.deepvariant_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+    publishDir { "${params.deepvariant_output_dir}/${sample_id}" }, mode: 'copy', overwrite: true
     
     cpus 4
     memory '16 GB'

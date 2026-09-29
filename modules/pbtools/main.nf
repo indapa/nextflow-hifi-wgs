@@ -112,7 +112,7 @@ process PBMM2_ALIGN_SPOT_CHUNK {
 
 process MERGE_SPOT_CHUNKS {
     tag { "${sample_id}" }
-    publishDir "${params.aligned_output_dir}/${sample_id}", mode: 'copy', overwrite: true
+    publishDir { "${params.aligned_output_dir}/${sample_id}" }, mode: 'copy', overwrite: true
     container 'community.wave.seqera.io/library/samtools:1.21--0d76da7c3cf7751c'
 
     // Merging is lightweight and fast enough to run safely on Spot as well
@@ -332,7 +332,7 @@ process hiphase_small_variants {
 
 process trgt {
     tag "$sample_id"
-    publishDir "${params.trgt_output_dir}/${sample_id}", mode: 'copy'
+    publishDir { "${params.trgt_output_dir}/${sample_id}" }, mode: 'copy'
     
     
     container "quay.io/pacbio/trgt:5.1.0_build2"
