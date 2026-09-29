@@ -55,9 +55,7 @@ workflow {
         WGS_TRIO_ALIGNED()
     
     }
-    else if (params.entry == 'WGS_TRIO_ALIGNED') {
-        WGS_TRIO_ALIGNED()
-    }  
+    
     else if ( params.entry == 'WGS_TRIO') {
         WGS_TRIO()
     }
