@@ -108,6 +108,11 @@ process PBMM2_ALIGN_SPOT_CHUNK {
         --chunk ${chunk_id}/${total_chunks} \\
         --chunk-mode ${chunk_mode}
     """
+
+    stub:
+    """
+    touch ${sample_id}.chunk_${chunk_id}.bam
+    """
 }
 
 process MERGE_SPOT_CHUNKS {
@@ -133,6 +138,12 @@ process MERGE_SPOT_CHUNKS {
     # Sorted join guarantees deterministic merge order across retries
     samtools merge -@ ${task.cpus} -o ${sample_id}.aligned.bam ${chunk_bams.sort().join(' ')}
     samtools index -@ ${task.cpus} ${sample_id}.aligned.bam
+    """
+
+    stub:
+    """
+    touch ${sample_id}.aligned.bam
+    touch ${sample_id}.aligned.bam.bai
     """
 }
 

@@ -2,7 +2,7 @@
 
 
 
-include { pbmm2_align; cpg_methylation_calling; sawfish_discover; sawfish_joint_call; hiphase_small_variants } from './modules/pbtools'
+include { cpg_methylation_calling; sawfish_discover; sawfish_joint_call; hiphase_small_variants } from './modules/pbtools'
 include {
     deeptrio_wgs;
     deepvariant_wgs;
@@ -16,7 +16,7 @@ include { FASTVEP_ANNOTATE_TRIO_VCF; FASTVEP_ANNOTATE_SINGLETON_VCF } from './mo
 include { WHATSHAP_TRIO_PHASE_BY_CHROM } from './subworkflows/whatshap_trio_phase_by_chrom'
 include { CONCAT_AND_SPLIT_WGS } from './subworkflows/concat_and_split_wgs'
 include { GLNEXUS_TRIO }         from './subworkflows/glnexus_trio_merge'
-include { PBMM2_ALIGN; PBMM2_SPOT_WGS} from './subworkflows/reference_alignment'
+include { PBMM2_SPOT_WGS } from './subworkflows/reference_alignment'
 include {FASTVEP_ANNOTATE_WGS} from './subworkflows/fastvep'
 include {DEEPVARIANT_SINGLETON_WGS; DEEPVARIANT_SINGLETON_WGS_PARABRICKS} from './subworkflows/deepvariant_singleton_wgs'
 include { DEEPTRIO_WGS } from './subworkflows/deeptrio_wgs'
@@ -74,7 +74,7 @@ workflow {
 
     /* post alignment */
     POST_ALIGNMENT(
-        PBMM2_ALIGN.out
+        PBMM2_SPOT_WGS.out
     )
 
     }
@@ -118,16 +118,14 @@ workflow WGS_TRIO {
     }
 
 
-    sample_roles_ch = channel.fromPath(params.trio_aligned_samplesheet)
-        .splitCsv(header: true)
-        .map { row -> tuple(row.sample_id, row.role) }
+    sample_roles_ch = raw_samples_ch
+        .map { fam, sample_id, role, _bam -> tuple(sample_id, role) }
 
-    sample_to_family_ch = channel.fromPath(params.trio_aligned_samplesheet)
-        .splitCsv(header: true)
-        .map { row -> tuple(row.sample_id, row.family_id) }
+    sample_to_family_ch = raw_samples_ch
+        .map { fam, sample_id, role, _bam -> tuple(sample_id, fam) }
 
     // Isolate single aligned BAM trackers for downstream tools (Sawfish/HiPhase)
-    individual_aligned_bams = pbmm2_align.out.aligned_bam
+    individual_aligned_bams = PBMM2_SPOT_WGS.out
 
     RUN_TRIO_PIPELINE(trio_bams_assembled, individual_aligned_bams, sample_roles_ch, sample_to_family_ch)
 }
