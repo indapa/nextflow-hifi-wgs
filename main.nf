@@ -53,8 +53,33 @@ workflow {
 
     if (params.entry == 'WGS_TRIO_ALIGNED') {
         WGS_TRIO_ALIGNED()
-    }   else{
-        if (!file(params.samplesheet).exists()) {
+    
+    }
+    else if (params.entry == 'WGS_TRIO_ALIGNED') {
+        WGS_TRIO_ALIGNED()
+    }  
+    else if ( params.entry == 'WGS_TRIO') {
+        WGS_TRIO()
+    }
+    else if (params.entry == 'WGS_SINGLETON') {
+        WGS_SINGLETON()
+    }
+    else if (params.entry == 'POST_ALIGNMENT_ONLY') {
+        POST_ALIGNMENT_ONLY()
+
+    }
+    else {
+        WGS_SINGLETON()
+    }
+}
+// =========================================================================
+//  WORKFLOW: TRIO ANALYSIS ENTRYPOINTS
+// =========================================================================
+
+// --- Entrypoint 1: Starts from Raw Unaligned BAMs ---
+
+workflow WGS_SINGLETON {
+    if (!file(params.samplesheet).exists()) {
         exit 1, "Samplesheet file not found: ${params.samplesheet}"
     }
 
@@ -77,13 +102,8 @@ workflow {
         PBMM2_SPOT_WGS.out
     )
 
-    }
 }
-// =========================================================================
-//  WORKFLOW: TRIO ANALYSIS ENTRYPOINTS
-// =========================================================================
 
-// --- Entrypoint 1: Starts from Raw Unaligned BAMs ---
 workflow WGS_TRIO {
     
 
@@ -119,10 +139,10 @@ workflow WGS_TRIO {
 
 
     sample_roles_ch = raw_samples_ch
-        .map { fam, sample_id, role, _bam -> tuple(sample_id, role) }
+        .map { _fam, sample_id, role, _bam -> tuple(sample_id, role) }
 
     sample_to_family_ch = raw_samples_ch
-        .map { fam, sample_id, role, _bam -> tuple(sample_id, fam) }
+        .map { fam, sample_id, _role, _bam -> tuple(sample_id, fam) }
 
     // Isolate single aligned BAM trackers for downstream tools (Sawfish/HiPhase)
     individual_aligned_bams = PBMM2_SPOT_WGS.out
@@ -197,13 +217,7 @@ workflow RUN_TRIO_PIPELINE {
     // Pre-calculate how many chunks exist per chromosome so groupTuple can
     // emit eagerly via groupKey without waiting for the entire channel to close.
     // =========================================================================
-    def counts_by_chrom = [:]
-    file(params.intervals_dir).list().each { name ->
-        if (name.endsWith(".bed") && name.startsWith("chr")) {
-            def chrom = name.split('_')[0]
-            counts_by_chrom[chrom] = (counts_by_chrom[chrom] ?: 0) + 1
-        }
-    }
+   
 
     // Run DeepTrio end-to-end: 50MB scatter -> per-chromosome merge -> genome-wide merge
     DEEPTRIO_WGS(

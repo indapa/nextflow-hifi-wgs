@@ -23,7 +23,7 @@ workflow FASTVEP_ANNOTATE_TRIO_INDIVIDUALS {
 
     SPLIT_TRIO_VCF_BY_SAMPLE(ch_split_input)
 
-    ch_individual_vcfs = Channel.empty()
+    ch_individual_vcfs = channel.empty()
         .mix(
             SPLIT_TRIO_VCF_BY_SAMPLE.out.child_vcf,
             SPLIT_TRIO_VCF_BY_SAMPLE.out.p1_vcf,
@@ -39,5 +39,5 @@ workflow FASTVEP_ANNOTATE_TRIO_INDIVIDUALS {
     )
 
     emit:
-    annotated_vcf = FASTVEP_ANNOTATE_SINGLETON_VCF.out.annotated_vcf // tuple(sample_id, annotated_vcf)
+    FASTVEP_ANNOTATE_SINGLETON_VCF.out.annotated_vcf // tuple(sample_id, annotated_vcf)
 }

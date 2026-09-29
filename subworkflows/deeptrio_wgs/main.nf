@@ -31,7 +31,7 @@ workflow DEEPTRIO_WGS {
 
     // 4. Fan the per-member VCF/gVCF outputs into a single channel keyed by
     //    [family_id, sample_id, chrom, file_type]
-    ch_chunks = Channel.empty()
+    ch_chunks = channel.empty()
         .mix(
             deeptrio_wgs_by_chrom.out.child_vcf,
             deeptrio_wgs_by_chrom.out.child_gvcf,

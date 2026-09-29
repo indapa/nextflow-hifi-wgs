@@ -64,12 +64,14 @@ process MAKE_PBI {
     tuple val(sample_id), path(unaligned_bam), path("${unaligned_bam}.pbi"), emit: bam_pbi
 
     script:
+    def basename = unaligned_bam.simpleName
     """
     pbindex -j ${task.cpus} ${unaligned_bam}
     """
 
     stub:
     """
+    touch ${sample_id}.hifi_reads.bam
     touch ${unaligned_bam}.pbi
     """
 }
