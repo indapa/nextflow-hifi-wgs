@@ -43,6 +43,14 @@
             "type": "string",
             "default": "s3://embedbio-results/hifi-wgs-output/hiphase"
         },
+        "whatshap_output_dir": {
+            "type": "string",
+            "default": "s3://embedbio-results/hifi-wgs-output/whatshap"
+        },
+        "glnexus_output_dir": {
+            "type": "string",
+            "default": "s3://embedbio-results/hifi-wgs-output/glnexus"
+        },
         "cpg_output_dir": {
             "type": "string",
             "default": "s3://embedbio-results/hifi-wgs-output/cpg"
