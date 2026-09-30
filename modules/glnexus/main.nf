@@ -57,7 +57,7 @@ process glnexus_trio_by_chrom {
 
 process concat_glnexus_vcf {
     tag { "${family_id}" }
-    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
+    publishDir { "${params.glnexus_output_dir}/${family_id}" }, mode: 'copy', overwrite: true
 
     container "quay.io/biocontainers/bcftools:1.21--h8b25389_0"
 
