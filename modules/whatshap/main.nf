@@ -67,8 +67,8 @@ process whatshap_trio_phase {
 process WHATSHAP_PHASE_CHROM {
     tag "${family_id}:${chrom}"
     label 'process_medium'
-    container "indapa/whatshap-tabix"
-
+    container "community.wave.seqera.io/library/bcftools_whatshap:16f1800bbb322710"
+    
     input:
     tuple val(family_id), val(chrom), path(vcf), path(vcf_tbi), \
           val(child_id), path(child_bam), path(child_bai), \
@@ -78,7 +78,7 @@ process WHATSHAP_PHASE_CHROM {
     path reference_index
 
     output:
-    tuple val(family_id), path("${family_id}.${chrom}.phased.vcf.gz"), emit: phased_vcf
+    tuple val(family_id), path("${family_id}.${chrom}.phased.vcf.gz"), path("${family_id}.${chrom}.phased.vcf.gz.tbi"), emit: phased_vcf
 
     script:
     """
@@ -88,15 +88,19 @@ process WHATSHAP_PHASE_CHROM {
         --ped ${family_id}.ped \
         --reference ${reference} \
         --chromosome ${chrom} \
-        --output ${family_id}.${chrom}.phased.vcf.gz \
+        --output ${family_id}.${chrom}.phased.tmp.gz \
         ${vcf} \
         ${child_bam} ${p1_bam} ${p2_bam}
+    # keep only this chromosome's (now phased) records
+    bcftools view -r ${chrom} -Oz -o ${family_id}.${chrom}.phased.vcf.gz ${family_id}.${chrom}.phased.tmp.vcf.gz
+    tabix -p vcf ${family_id}.${chrom}.phased.vcf.gz
     """
 
    
     stub:
     """
     touch ${family_id}.${chrom}.phased.vcf.gz
+    touch ${family_id}.${chrom}.phased.vcf.gz.tbi
     """ 
 }
 
@@ -104,10 +108,10 @@ process CONCAT_PHASED_VCFS {
     tag "${family_id}"
     label 'process_low'
     container "quay.io/biocontainers/bcftools:1.17--haef29d1_0"
-    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
+    publishDir { "${params.whatshap_output_dir}/${family_id}" }, mode: 'copy', overwrite: true
 
     input:
-    tuple val(family_id), path(phased_vcfs)
+    tuple val(family_id), path(phased_vcfs), path(phased_vcfs_tbi)
 
     output:
     tuple val(family_id), path("${family_id}.trio_phased.vcf.gz"), path("${family_id}.trio_phased.vcf.gz.tbi"), emit: merged_vcf
@@ -115,7 +119,7 @@ process CONCAT_PHASED_VCFS {
     script:
     """
     ls *.phased.vcf.gz | sort -V > vcf_list.txt
-    bcftools concat -a --file-list vcf_list.txt | bcftools sort -Oz -o ${family_id}.trio_phased.vcf.gz
+    bcftools concat --file-list vcf_list.txt -Oz -o ${family_id}.trio_phased.vcf.gz
     bcftools index -t ${family_id}.trio_phased.vcf.gz
     """
 
@@ -159,7 +163,7 @@ process SPLIT_TRIO_VCF_BY_SAMPLE {
 process WHATSHAP_STATS_HAPLOTAG {
     tag "${family_id}"
     label 'process_medium'
-    publishDir { "${params.deepvariant_output_dir}/DV_trio/${family_id}" }, mode: 'copy', overwrite: true
+    publishDir { "${params.whatshap_output_dir}/${family_id}" }, mode: 'copy', overwrite: true
     container "indapa/whatshap-tabix"
 
     input:
