@@ -88,9 +88,11 @@ process WHATSHAP_PHASE_CHROM {
         --ped ${family_id}.ped \
         --reference ${reference} \
         --chromosome ${chrom} \
-        --output ${family_id}.${chrom}.phased.tmp.gz \
+        --output ${family_id}.${chrom}.phased.tmp.vcf.gz \
         ${vcf} \
         ${child_bam} ${p1_bam} ${p2_bam}
+    tabix -v -p vcf ${family_id}.${chrom}.phased.tmp.vcf.gz
+    
     # keep only this chromosome's (now phased) records
     bcftools view -r ${chrom} -Oz -o ${family_id}.${chrom}.phased.vcf.gz ${family_id}.${chrom}.phased.tmp.vcf.gz
     tabix -p vcf ${family_id}.${chrom}.phased.vcf.gz
