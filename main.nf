@@ -47,6 +47,8 @@ workflow {
            Performs alignment, DeepTrio, Phasing, CpG, and SV calls on unaligned trio inputs.
         4. WGS_TRIO_ALIGNED: nextflow run main.nf -entry WGS_TRIO_ALIGNED --trio_aligned_samplesheet trios.csv
            Performs DeepTrio and downstream pipelines on pre-aligned trio inputs.
+        5. GLNEXUS_WHATSHAP_FASTVEP: nextflow run main.nf -entry GLNEXUS_WHATSHAP_FASTVEP --trio_gvcf_samplesheet trios.csv
+           Runs GLnexus joint calling, WhatsHap trio phasing, and FastVEP annotation on existing DeepTrio gVCFs.
         """.stripIndent()
         exit 0
     }
@@ -61,6 +63,9 @@ workflow {
     }
     else if (params.entry == 'WGS_SINGLETON') {
         WGS_SINGLETON()
+    }
+    else if (params.entry == 'GLNEXUS_WHATSHAP_FASTVEP') {
+        GLNEXUS_WHATSHAP_FASTVEP()
     }
     else if (params.entry == 'POST_ALIGNMENT_ONLY') {
         POST_ALIGNMENT_ONLY()
@@ -190,6 +195,66 @@ workflow WGS_TRIO_ALIGNED {
         .map { row -> tuple(row.sample_id, file(row.aligned_bam), file(row.aligned_bai)) }
 
     RUN_TRIO_PIPELINE(trio_bams_assembled, individual_aligned_bams, sample_roles_ch, sample_to_family_ch)
+}
+
+// --- Entrypoint 3: Starts from existing DeepTrio gVCFs + pre-aligned BAMs ---
+// Runs only GLnexus joint calling -> WhatsHap trio phasing -> FastVEP annotation.
+// Samplesheet columns: family_id, sample_id, role, aligned_bam, aligned_bai, gvcf, gvcf_tbi
+workflow GLNEXUS_WHATSHAP_FASTVEP {
+
+    if (!params.trio_gvcf_samplesheet || !file(params.trio_gvcf_samplesheet).exists()) {
+        exit 1, "Trio gVCF samplesheet file not found: ${params.trio_gvcf_samplesheet}"
+    }
+
+    samples_ch = channel.fromPath(params.trio_gvcf_samplesheet)
+        .splitCsv(header: true)
+
+    trio_bams_assembled = samples_ch
+        .map { row ->
+            tuple(row.family_id, [
+                role: row.role,
+                id: row.sample_id,
+                bam: file(row.aligned_bam),
+                bai: file(row.aligned_bai)
+            ])
+        }
+        .groupTuple(by: 0)
+        .map { fam, members ->
+            def c  = members.find { m -> m.role == 'child' }
+            def p1 = members.find { m -> m.role == 'parent1' }
+            def p2 = members.find { m -> m.role == 'parent2' }
+
+            return tuple(fam, c.id, c.bam, c.bai, p1.id, p1.bam, p1.bai, p2.id, p2.bam, p2.bai)
+        }
+
+    sample_roles_ch = samples_ch
+        .map { row -> tuple(row.sample_id, row.role) }
+
+    deeptrio_gvcf_ch = samples_ch
+        .map { row -> tuple(row.family_id, row.sample_id, file(row.gvcf), file(row.gvcf_tbi)) }
+
+    GLNEXUS_TRIO(
+        deeptrio_gvcf_ch,
+        sample_roles_ch,
+        channel.fromList(params.chromosomes),
+        file(params.glnexus_region_bed)
+    )
+
+    WHATSHAP_TRIO_PHASE_BY_CHROM(
+        GLNEXUS_TRIO.out,
+        trio_bams_assembled,
+        file(params.reference),
+        file(params.reference_index),
+        channel.fromList(params.chromosomes)
+    )
+
+    FASTVEP_ANNOTATE_TRIO_INDIVIDUALS(
+        WHATSHAP_TRIO_PHASE_BY_CHROM.out.phased_vcf,
+        trio_bams_assembled,
+        file(params.fastvep_gff),
+        file(params.reference),
+        channel.fromPath("${params.fastvep_sa_dir}/*").collect()
+    )
 }
 
 // =========================================================================
