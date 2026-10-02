@@ -51,6 +51,10 @@
             "type": "string",
             "default": "s3://embedbio-results/hifi-wgs-output/glnexus"
         },
+        "fastvep_output_dir": {
+            "type": "string",
+            "default": "s3://embedbio-results/hifi-wgs-output/fastvep"
+        },
         "cpg_output_dir": {
             "type": "string",
             "default": "s3://embedbio-results/hifi-wgs-output/cpg"
