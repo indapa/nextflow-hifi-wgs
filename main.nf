@@ -47,8 +47,9 @@ workflow {
            Performs alignment, DeepTrio, Phasing, CpG, and SV calls on unaligned trio inputs.
         4. WGS_TRIO_ALIGNED: nextflow run main.nf -entry WGS_TRIO_ALIGNED --trio_aligned_samplesheet trios.csv
            Performs DeepTrio and downstream pipelines on pre-aligned trio inputs.
-        5. GLNEXUS_WHATSHAP_FASTVEP: nextflow run main.nf -entry GLNEXUS_WHATSHAP_FASTVEP --trio_gvcf_samplesheet trios.csv
-           Runs GLnexus joint calling, WhatsHap trio phasing, and FastVEP annotation on existing DeepTrio gVCFs.
+        5. TRIO_FROM_DEEPTRIO: nextflow run main.nf -entry TRIO_FROM_DEEPTRIO --trio_gvcf_samplesheet trios.csv
+           Runs GLnexus joint calling, WhatsHap trio phasing, FastVEP annotation, HiPhase parent phasing,
+           and CpG methylation on existing DeepTrio VCFs/gVCFs + pre-aligned BAMs.
         """.stripIndent()
         exit 0
     }
@@ -64,8 +65,8 @@ workflow {
     else if (params.entry == 'WGS_SINGLETON') {
         WGS_SINGLETON()
     }
-    else if (params.entry == 'GLNEXUS_WHATSHAP_FASTVEP') {
-        GLNEXUS_WHATSHAP_FASTVEP()
+    else if (params.entry == 'TRIO_FROM_DEEPTRIO') {
+        TRIO_FROM_DEEPTRIO()
     }
     else if (params.entry == 'POST_ALIGNMENT_ONLY') {
         POST_ALIGNMENT_ONLY()
@@ -197,10 +198,11 @@ workflow WGS_TRIO_ALIGNED {
     RUN_TRIO_PIPELINE(trio_bams_assembled, individual_aligned_bams, sample_roles_ch, sample_to_family_ch)
 }
 
-// --- Entrypoint 3: Starts from existing DeepTrio gVCFs + pre-aligned BAMs ---
-// Runs only GLnexus joint calling -> WhatsHap trio phasing -> FastVEP annotation.
-// Samplesheet columns: family_id, sample_id, role, aligned_bam, aligned_bai, gvcf, gvcf_tbi
-workflow GLNEXUS_WHATSHAP_FASTVEP {
+// --- Entrypoint 3: Starts from existing DeepTrio VCFs/gVCFs + pre-aligned BAMs ---
+// Runs GLnexus joint calling -> WhatsHap trio phasing -> FastVEP annotation,
+// plus HiPhase read-backed phasing of the parents -> CpG methylation (child + parents).
+// Samplesheet columns: family_id, sample_id, role, aligned_bam, aligned_bai, vcf, vcf_tbi, gvcf, gvcf_tbi
+workflow TRIO_FROM_DEEPTRIO {
 
     if (!params.trio_gvcf_samplesheet || !file(params.trio_gvcf_samplesheet).exists()) {
         exit 1, "Trio gVCF samplesheet file not found: ${params.trio_gvcf_samplesheet}"
@@ -230,6 +232,12 @@ workflow GLNEXUS_WHATSHAP_FASTVEP {
     sample_roles_ch = samples_ch
         .map { row -> tuple(row.sample_id, row.role) }
 
+    individual_aligned_bams = samples_ch
+        .map { row -> tuple(row.sample_id, file(row.aligned_bam), file(row.aligned_bai)) }
+
+    deeptrio_vcf_ch = samples_ch
+        .map { row -> tuple(row.family_id, row.sample_id, file(row.vcf), file(row.vcf_tbi)) }
+
     deeptrio_gvcf_ch = samples_ch
         .map { row -> tuple(row.family_id, row.sample_id, file(row.gvcf), file(row.gvcf_tbi)) }
 
@@ -254,6 +262,23 @@ workflow GLNEXUS_WHATSHAP_FASTVEP {
         file(params.fastvep_gff),
         file(params.reference),
         channel.fromPath("${params.fastvep_sa_dir}/*").collect()
+    )
+
+    // Read-backed phasing + haplotagging for each parent independently
+    HIPHASE_TRIO_PARENTS(
+        deeptrio_vcf_ch,
+        individual_aligned_bams,
+        sample_roles_ch,
+        file(params.reference),
+        file(params.reference_index)
+    )
+
+    // CpG methylation calling on the haplotagged child + parent BAMs
+    CPG_TRIO_METHYLATION(
+        WHATSHAP_TRIO_PHASE_BY_CHROM.out.haplotagged_bam,
+        HIPHASE_TRIO_PARENTS.out.haplotagged_bam,
+        file(params.reference),
+        file(params.reference_index)
     )
 }
 
