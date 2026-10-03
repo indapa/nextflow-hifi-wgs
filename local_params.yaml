@@ -1,0 +1,38 @@
+# Params for running on a local workstation with resources copied by
+# scripts/sync_local_resources.sh. Edit the two directories and the machine
+# limits, then:
+#
+#   nextflow run main.nf -profile local,docker    -params-file local_params.yaml -entry ...
+#   nextflow run main.nf -profile local,apptainer -params-file local_params.yaml -entry ...
+#
+# YAML has no variables, so the resources directory is repeated below --
+# replace every /data/hifi-wgs-resources with your <dest_dir>.
+
+# All *_output_dir params are derived from this
+output_dir: /data/hifi-wgs-results
+
+# Machine limits: no single task will request more than this
+max_cpus: 32
+max_memory: 128.GB
+
+# Reference (reference_index defaults to "<reference>.fai")
+reference: /data/hifi-wgs-resources/reference/human_GRCh38_no_alt_analysis_set.fasta
+mmi:       /data/hifi-wgs-resources/reference/human_GRCh38_no_alt_analysis_set.mmi
+
+# DeepVariant / DeepTrio interval chunks
+intervals_dir: /data/hifi-wgs-resources/resources/deepvariant-regions-chunks
+bed_dir:       /data/hifi-wgs-resources/resources/deepvariant-regions-chunks
+
+# GLnexus
+glnexus_region_bed: /data/hifi-wgs-resources/resources/glnexus/all_contigs.bed
+glnexus_bed:        /data/hifi-wgs-resources/resources/glnexus/all_contigs.bed
+
+# FastVEP
+fastvep_gff:    /data/hifi-wgs-resources/resources/fastvep/GFFs/gencode.v50.annotation.gff3.gz
+fastvep_sa_dir: /data/hifi-wgs-resources/resources/fastvep/SA_files
+
+# sawfish / TRGT
+trgt_repeats_bed: /data/hifi-wgs-resources/resources/adotto_strchive_20250827.hg38.bed.gz
+expected_XX_bed:  /data/hifi-wgs-resources/resources/expected_cn/expected_cn.hg38.XX.bed
+expected_XY_bed:  /data/hifi-wgs-resources/resources/expected_cn/expected_cn.hg38.XY.bed
+excluded_bed:     /data/hifi-wgs-resources/resources/cnv_excluded_regions/annotation_and_common_cnv.hg38.bed.gz

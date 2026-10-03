@@ -13,7 +13,7 @@
 
 ## Requirements
 - [Nextflow](https://www.nextflow.io/)
-- [Docker](https://www.docker.com/) or [Singularity](https://sylabs.io/docs/) to run the containers
+- [Docker](https://www.docker.com/), [Apptainer](https://apptainer.org/) or [Singularity](https://sylabs.io/docs/) to run the containers
 - [Seqera Platform](https://seqera.io/) is recommended. The default config turns on Wave, Fusion and the `nf-tower` plugin.
 
 ## Quick Start
@@ -28,7 +28,7 @@ nextflow run main.nf --help
 nextflow run main.nf --samplesheet samples.csv
 ```
 
-To run on the local executor without Wave or Fusion, add `-profile local`.
+To do a stub run on the local executor without Wave or Fusion, add `-profile test -stub`. The `-stub` flag is what makes Nextflow run the `stub:` blocks; the profile only sets resources.
 
 ## Entrypoints
 Choose an entrypoint with `-entry <NAME>`. If you don't name one, the pipeline runs `WGS_SINGLETON`.
@@ -105,7 +105,30 @@ All parameters live in [nextflow.config](nextflow.config) and you can override a
 - **Intervals:** `intervals_dir` (DeepTrio chunk BEDs), `bed_dir` (DeepVariant chunk BEDs), `chromosomes` (chromosomes for GLnexus and WhatsHap), `glnexus_region_bed`
 - **Annotation:** `fastvep_gff`, `fastvep_sa_dir`
 - **SV and repeats:** `expected_XX_bed`, `expected_XY_bed`, `excluded_bed`, `trgt_repeats_bed`, `trgt_max_depth`, `trgt_min_mapq`
-- **Profiles:** `local` uses the local executor with 1 CPU and 2 GB per task, and turns off Wave and Fusion
+- **Profiles:**
+  - `test`: local executor, 1 CPU and 2 GB per task, Wave and Fusion off. Use with `-stub`.
+  - `local`: local executor, with each task capped at `--max_cpus` / `--max_memory`. Wave and Fusion off. Combine with a container profile.
+  - `docker`, `apptainer`, `singularity`: choose the container engine. Apptainer and Singularity pull the same images as Docker.
+
+## Running Locally
+For a single large workstation instead of AWS Batch. No process definitions change; you only choose a container engine with a profile.
+
+1. **Copy the reference resources.** Most of the default resources are in private S3 buckets. Someone with read access runs this once, then shares the folder (about 9 GB, nearly all of it the FASTA and the pbmm2 `.mmi`):
+   ```bash
+   scripts/sync_local_resources.sh /data/hifi-wgs-resources
+   ```
+   Add `--skip-large` to skip the FASTA and `.mmi`.
+2. **Edit [local_params.yaml](local_params.yaml).** Point it at the resources folder, choose an output directory, and set `max_cpus` / `max_memory` to match the machine.
+3. **Run** with Docker, or with Apptainer if there's no Docker daemon:
+   ```bash
+   nextflow run main.nf -profile local,docker    -params-file local_params.yaml -entry WGS_TRIO_ALIGNED --trio_aligned_samplesheet trios.csv
+   nextflow run main.nf -profile local,apptainer -params-file local_params.yaml -entry WGS_TRIO_ALIGNED --trio_aligned_samplesheet trios.csv
+   ```
+   Samplesheet paths (BAMs, VCFs) can be local paths.
+
+Notes:
+- Apptainer caches the converted images in `.apptainer_cache/` (set with `--apptainer_cache`), so only the first run pulls them.
+- The GPU processes (`deeptrio_wgs_50mb_chunk`, `deepvariant_wgs_parabricks`) use Docker-only `--gpus all` and aren't called by any entrypoint.
 
 ## Outputs
 Outputs are written under `--output_dir`:
@@ -126,6 +149,8 @@ Outputs are written under `--output_dir`:
 ## Repository Layout
 ```
 main.nf          entrypoints, RUN_TRIO_PIPELINE and POST_ALIGNMENT
+local_params.yaml  params template for local runs
+scripts/         sync_local_resources.sh (copies S3 resources locally)
 modules/         processes: pbtools, deepvariant, glnexus, whatshap, fastvep,
                  samtools, mosdepth, alignment_metrics, ensemblvep
 subworkflows/
