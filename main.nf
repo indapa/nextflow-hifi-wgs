@@ -11,7 +11,6 @@ include {
 
 } from './modules/deepvariant'
 include { bam_stats; samtools_index } from './modules/samtools'
-include { FASTVEP_ANNOTATE_TRIO_VCF; FASTVEP_ANNOTATE_SINGLETON_VCF } from './modules/fastvep'
 
 include { WHATSHAP_TRIO_PHASE_BY_CHROM } from './subworkflows/whatshap_trio_phase_by_chrom'
 include { CONCAT_AND_SPLIT_WGS } from './subworkflows/concat_and_split_wgs'
