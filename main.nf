@@ -3,13 +3,7 @@
 
 
 include { cpg_methylation_calling; sawfish_discover; sawfish_joint_call; hiphase_small_variants } from './modules/pbtools'
-include {
-    deeptrio_wgs;
-    deepvariant_wgs;
-    concat_chrom_chunks_vcf;
-    concat_wgs_vcf
 
-} from './modules/deepvariant'
 include { bam_stats; samtools_index } from './modules/samtools'
 
 include { WHATSHAP_TRIO_PHASE_BY_CHROM } from './subworkflows/whatshap_trio_phase_by_chrom'
