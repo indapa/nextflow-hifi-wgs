@@ -113,12 +113,53 @@ All parameters live in [nextflow.config](nextflow.config) and you can override a
 ## Running Locally
 For a single large workstation instead of AWS Batch. No process definitions change; you only choose a container engine with a profile.
 
-1. **Copy the reference resources.** Most of the default resources are in private S3 buckets. Someone with read access runs this once, then shares the folder (about 9 GB, nearly all of it the FASTA and the pbmm2 `.mmi`):
+1. **Download the reference resources.** All of them are public. Pick a resources directory and run these steps once, from the repository root:
    ```bash
-   scripts/sync_local_resources.sh /data/hifi-wgs-resources
+   RES=/data/hifi-wgs-resources
+   mkdir -p "$RES"
    ```
-   Add `--skip-large` to skip the FASTA and `.mmi`.
-2. **Edit [local_params.yaml](local_params.yaml).** Point it at the resources folder, choose an output directory, and set `max_cpus` / `max_memory` to match the machine.
+   a. **PacBio HiFi-human-WGS reference bundle** ([Zenodo 14908106](https://zenodo.org/records/14908106)): the GRCh38 FASTA and `.fai`, the TRGT repeat catalog, and the sawfish expected-copy-number and CNV-exclusion BEDs. The tar is 9.5 GB. It unpacks to `hifi-wdl-resources-v2.0.0/GRCh38/`. The pipeline doesn't use the gnomAD and CoLoRSdb files (about 5 GB), so you can delete them after extracting.
+   ```bash
+   curl -L -o "$RES/hifi-wdl-resources-v2.1.0.tar" \
+     "https://zenodo.org/records/14908106/files/hifi-wdl-resources-v2.1.0.tar?download=1"
+   tar -xf "$RES/hifi-wdl-resources-v2.1.0.tar" -C "$RES" && rm "$RES/hifi-wdl-resources-v2.1.0.tar"
+   GRCH38="$RES/hifi-wdl-resources-v2.0.0/GRCh38"
+   ```
+   b. **FastVEP gene models**: the GENCODE v50 GFF3 from [gencodegenes.org](https://www.gencodegenes.org/human/).
+   ```bash
+   mkdir -p "$RES/fastvep/SA_files"
+   curl -L -o "$RES/fastvep/gencode.v50.annotation.gff3.gz" \
+     https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_50/gencode.v50.annotation.gff3.gz
+   ```
+   c. **FastVEP ClinVar supplementary annotation**: build `clinvar.osa2` from the NCBI ClinVar VCF, following the [fastVEP local setup guide](https://github.com/Huang-lab/fastVEP#local-setup-guide). `sa-build` only converts files; it does not download them. A good build is tens of MB. Anything under 1 MB means the input was empty.
+   ```bash
+   curl -L -o "$RES/fastvep/clinvar.vcf.gz" \
+     https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz
+   docker run --rm -v "$RES/fastvep:/work" -w /work docker.io/indapa/fastvep:0.2.0 \
+     fastvep sa-build --source clinvar -i clinvar.vcf.gz -o SA_files/clinvar --assembly GRCh38
+   ls -la "$RES/fastvep/SA_files/"
+   ```
+   d. **Files generated from the FASTA index**: the 50 Mb DeepVariant/DeepTrio chunk BEDs and the whole-chromosome BED for GLnexus.
+   ```bash
+   python3 Intervals/generate_bed.py "$GRCH38/human_GRCh38_no_alt_analysis_set.fasta.fai" "$RES/intervals"
+   mkdir -p "$RES/glnexus"
+   awk -v OFS='\t' '$1 ~ /^chr([1-9]|1[0-9]|2[0-2]|X|Y)$/ {print $1, 0, $2}' \
+     "$GRCH38/human_GRCh38_no_alt_analysis_set.fasta.fai" > "$RES/glnexus/all_contigs.bed"
+   ```
+   e. **pbmm2 index** (optional). Only the entrypoints that align unaligned BAMs (`WGS_SINGLETON`, `WGS_TRIO`) need it. It takes about 10 minutes and the output is about 5.4 GB.
+   ```bash
+   mkdir -p "$RES/reference"
+   docker run --rm -v "$RES:$RES" quay.io/pacbio/pbmm2:1.17.0_build1 \
+     pbmm2 index --preset HIFI "$GRCH38/human_GRCh38_no_alt_analysis_set.fasta" \
+     "$RES/reference/human_GRCh38_no_alt_analysis_set.mmi"
+   ```
+   These public files differ in three ways from the S3 defaults in [nextflow.config](nextflow.config):
+   - The TRGT catalog is `adotto_repeats.updated_pathogenic_repeats` instead of `adotto_strchive_20250827`.
+   - The CNV exclusion BED is HiFiCNV's `cnv.excluded_regions.common_50` instead of `annotation_and_common_cnv`.
+   - The ClinVar release is the current one.
+
+   If you can read the internal S3 buckets, you can mirror the defaults with `scripts/sync_local_resources.sh "$RES"` instead. That script writes a different directory layout, so adjust the paths in `local_params.yaml` to match.
+2. **Edit [local_params.yaml](local_params.yaml).** Replace every `/data/hifi-wgs-resources` with your `$RES` directory, choose an output directory, and set `max_cpus` / `max_memory` to match the machine.
 3. **Run** with Docker, or with Apptainer if there's no Docker daemon:
    ```bash
    nextflow run main.nf -profile local,docker    -params-file local_params.yaml -entry WGS_TRIO_ALIGNED --trio_aligned_samplesheet trios.csv
@@ -150,7 +191,8 @@ Outputs are written under `--output_dir`:
 ```
 main.nf          entrypoints, RUN_TRIO_PIPELINE and POST_ALIGNMENT
 local_params.yaml  params template for local runs
-scripts/         sync_local_resources.sh (copies S3 resources locally)
+scripts/         sync_local_resources.sh (mirrors the internal S3 resources; needs bucket access)
+Intervals/       generate_bed.py (makes the 50 Mb chunk BEDs from a .fai)
 modules/         processes: pbtools, deepvariant, glnexus, whatshap, fastvep,
                  samtools, mosdepth, alignment_metrics, ensemblvep
 subworkflows/
