@@ -191,6 +191,7 @@ Outputs are written under `--output_dir`:
 ```
 main.nf          entrypoints, RUN_TRIO_PIPELINE and POST_ALIGNMENT
 local_params.yaml  params template for local runs
+CONTAINERS.md    container image used by each process and entrypoint
 scripts/         sync_local_resources.sh (mirrors the internal S3 resources; needs bucket access)
 Intervals/       generate_bed.py (makes the 50 Mb chunk BEDs from a .fai)
 modules/         processes: pbtools, deepvariant, glnexus, whatshap, fastvep,
